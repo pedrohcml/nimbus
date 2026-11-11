@@ -1,10 +1,10 @@
 [project]
 name = "nimbus"
 version = "0.1.0"
-description = "Add your description here"
+description = "test"
 readme = "README.md"
 authors = [
-    { name = "Pedro Henrique Cavalcante da Motta Lima", email = "bizapp-pedro.lima@ailos.coop.br" }
+    { name = "Pedro Henrique Cavalcante da Motta Lima", email = "phcmlima@gmail.com" }
 ]
 requires-python = ">=3.11"
 dependencies = []
