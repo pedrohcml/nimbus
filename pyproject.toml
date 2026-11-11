@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "test"
 readme = "README.md"
 authors = [
-    { name = "Pedro Henrique Cavalcante da Motta Lima", email = "phcmlima@gmail.com" }
+    { name = "Pedro Cavalcante", email = "phcmlima@gmail.com" }
 ]
 requires-python = ">=3.11"
 dependencies = []
