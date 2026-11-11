@@ -37,3 +37,4 @@ testpaths = ["tests"]
 test = "pytest"
 lint = "ruff check ."
 fmt  = "ruff format ."
+fix  = "ruff check . --fix"
