@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 DISPUTE_REASONS = {"unauthorized", "duplicate", "not_received", "wrongs_amount", "other"}
 DISPUTE_WINDOW = timedelta(days=14)
 REFUND_APPROVAL_THRESHOLD_MINOR = 50_000
+ESCALATION_REASON_MAX_LENGTH = 500
 
 
 class NotFoundError(Exception):
@@ -179,3 +180,51 @@ def request_refund(
             result_status=refund["status"],
         )
     return refund
+
+
+def escalate(
+    conn: sqlite3.Connection,
+    customer_id: str,
+    conversation_id: str,
+    reason: str,
+    now: datetime,
+) -> dict:
+    reason = reason.strip()
+    if not reason or len(reason) > ESCALATION_REASON_MAX_LENGTH:
+        raise ValidationError(f"reason must be 1-{ESCALATION_REASON_MAX_LENGTH} characters")
+
+    with conn:
+        customer = conn.execute("select id from customers where id = ?", (customer_id,)).fetchone()
+        if customer is None:
+            raise NotFoundError(f"customer {customer_id} not found")
+
+        existing = conn.execute(
+            "select * from escalations where conversation_id = ? and status = 'open'",
+            (conversation_id,),
+        ).fetchone()
+        if existing is not None:
+            return dict(existing)
+
+        escalation = {
+            "id": f"esc_{uuid.uuid4().hex[:12]}",
+            "conversation_id": conversation_id,
+            "customer_id": customer_id,
+            "reason": reason,
+            "status": "open",
+            "created_at": now.isoformat(),
+        }
+        conn.execute(
+            "insert into escalations (id, conversation_id, customer_id, reason, status, "
+            "created_at) values (:id, :conversation_id, :customer_id, :reason, :status, "
+            ":created_at)",
+            escalation,
+        )
+        _audit(
+            conn,
+            now=now,
+            customer_id=customer_id,
+            tool_name="escalate",
+            args={"conversation_id": conversation_id},
+            result_status="ok",
+        )
+    return escalation

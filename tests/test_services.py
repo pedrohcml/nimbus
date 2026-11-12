@@ -9,6 +9,7 @@ from nimbus.backend.services import (
     IdempotencyConflictError,
     NotFoundError,
     ValidationError,
+    escalate,
     get_transaction,
     open_dispute,
     request_refund,
@@ -139,3 +140,53 @@ def test_refund_above_threshold_needs_human_approval(conn):
     r = refund(conn, approval_threshold_minor=10_000)
     assert r["status"] == "pending_approval"
     assert r["requires_approval"] == 1
+
+
+def escalate_call(conn, **overrides):
+    args = {
+        "customer_id": "cust_pedro",
+        "conversation_id": "conv-1",
+        "reason": "Customer asks for a human agent",
+        "now": NOW,
+    }
+    args.update(overrides)
+    return escalate(conn, **args)
+
+
+def test_escalate_creates_open_escalation(conn):
+    e = escalate_call(conn)
+    assert e["status"] == "open"
+    assert e["conversation_id"] == "conv-1"
+    assert count(conn, "escalations") == 1
+
+
+def test_escalate_writes_audit_log(conn):
+    before = count(conn, "audit_log")
+    escalate_call(conn)
+    assert count(conn, "audit_log") == before + 1
+
+
+@pytest.mark.parametrize("reason", ["", "   "])
+def test_escalate_rejects_empty_reason(conn, reason):
+    with pytest.raises(ValidationError):
+        escalate_call(conn, reason=reason)
+    assert count(conn, "escalations") == 0
+
+
+def test_escalate_unknown_customer(conn):
+    with pytest.raises(NotFoundError):
+        escalate_call(conn, customer_id="cust_xyz")
+    assert count(conn, "escalations") == 0
+
+
+def test_escalate_twice_same_conversation_returns_same_escalation(conn):
+    first = escalate_call(conn)
+    second = escalate_call(conn)
+    assert first["id"] == second["id"]
+    assert count(conn, "escalations") == 1
+
+
+def test_escalate_other_conversation_creates_new_conversation(conn):
+    escalate_call(conn)
+    escalate_call(conn, conversation_id="conv-2")
+    assert count(conn, "escalations") == 2
