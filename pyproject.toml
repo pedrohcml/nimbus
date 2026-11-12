@@ -7,7 +7,9 @@ authors = [
     { name = "Pedro Cavalcante", email = "phcmlima@gmail.com" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "mcp[cli]>=2",
+]
 
 [project.scripts]
 nimbus = "nimbus:main"

@@ -10,19 +10,23 @@ REFUND_APPROVAL_THRESHOLD_MINOR = 50_000
 ESCALATION_REASON_MAX_LENGTH = 500
 
 
-class NotFoundError(Exception):
+class ServiceError(Exception):
+    """Base error. agent safe"""
+
+
+class NotFoundError(ServiceError):
     """resource doesn't exist or does not belong to the caller"""
 
 
-class ValidationError(Exception):
+class ValidationError(ServiceError):
     """request with invalid value"""
 
 
-class DisputeAlreadyExistsError(Exception):
+class DisputeAlreadyExistsError(ServiceError):
     """dispute already exisntant for this transaction"""
 
 
-class IdempotencyConflictError(Exception):
+class IdempotencyConflictError(ServiceError):
     """same idempotency key was reused w different arguments"""
 
 

@@ -8,6 +8,7 @@ from nimbus.backend.services import (
     DisputeAlreadyExistsError,
     IdempotencyConflictError,
     NotFoundError,
+    ServiceError,
     ValidationError,
     escalate,
     get_transaction,
@@ -190,3 +191,11 @@ def test_escalate_other_conversation_creates_new_conversation(conn):
     escalate_call(conn)
     escalate_call(conn, conversation_id="conv-2")
     assert count(conn, "escalations") == 2
+
+
+@pytest.mark.parametrize(
+    "error",
+    [NotFoundError, ValidationError, DisputeAlreadyExistsError, IdempotencyConflictError],
+)
+def test_service_errors_share_base_class(error):
+    assert issubclass(error, ServiceError)
