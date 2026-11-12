@@ -56,6 +56,15 @@ class RefundView(BaseModel):
     created_at: str
 
 
+class EscalationView(BaseModel):
+    """What the agent sees about an escalation"""
+
+    id: str
+    reason: str
+    status: str
+    created_at: str
+
+
 @contextmanager
 def _service_errors_as_tool_errors() -> Iterator[None]:
     try:
@@ -155,5 +164,38 @@ def build_server(
                 approval_threshold_minor=refund_approval_threshold_minor,
             )
         return RefundView.model_validate(refund)
+
+    @mcp.tool()
+    async def escalate(
+        reason: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=services.ESCALATION_REASON_MAX_LENGTH,
+                description="Short neutral summary of why a human is needed.",
+            ),
+        ],
+        ctx: Context[Session],
+    ) -> EscalationView:
+        """hand the current conversation over to a human support agent.
+
+        Use when: the customer asks for a human; there are signs of fraud or account
+        takeover; the customer mentions legal action; or you cannot solve the issue
+        with the other tools. Do not use it for refunds waiting for approval: those
+        are already queued for a human.
+        Write the reason as a short neutral summary in your own words. Do not copy
+        the customer's message verbatim and never include card numbers, passwords
+        or other secrets. Calling it cagain in the same conversation returns the
+        same escalation."""
+        session = ctx.request_context.lifespan_context
+        with _service_errors_as_tool_errors():
+            escalation = services.escalate(
+                session.conn,
+                session.customer_id,
+                session.conversation_id,
+                reason,
+                now=session.clock(),
+            )
+        return EscalationView.model_validate(escalation)
 
     return mcp

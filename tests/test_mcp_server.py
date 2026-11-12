@@ -177,3 +177,45 @@ async def test_refund_on_other_customers_transaction(client, session):
     assert result.is_error
     assert "not found" in result.content[0].text
     assert count(session.conn, "refund_requests") == 0
+
+
+@pytest.mark.anyio
+async def test_conversation_id_never_tool_argument(client):
+    result = await client.list_tools()
+    for tool in result.tools:
+        assert "conversation_id" not in tool.input_schema.get("properties", {})
+
+
+@pytest.mark.anyio
+async def test_escalate_opens_escalation_for_session_conversation(client, session):
+    result = await client.call_tool(
+        "escalate", {"reason": "Customer reports an unauthorized withdrawal."}
+    )
+    assert not result.is_error
+    assert result.structured_content["status"] == "open"
+    row = session.conn.execute("select conversation_id, customer_id from escalations").fetchone()
+    assert row["conversation_id"] == "conv-test"
+    assert row["customer_id"] == "cust_pedro"
+
+
+@pytest.mark.anyio
+async def test_escalate_twice_returns_same_escalation(client, session):
+    args = {"reason": "Customer asks for a human agent."}
+    first = await client.call_tool("escalate", args)
+    second = await client.call_tool("escalate", args)
+    assert first.structured_content["id"] == second.structured_content["id"]
+    assert count(session.conn, "escalations") == 1
+
+
+@pytest.mark.parametrize("reason", ["   ", "x" * 501])
+@pytest.mark.anyio
+async def test_escalate_rejects_invalid_reason(client, session, reason):
+    result = await client.call_tool("escalate", {"reason": reason})
+    assert result.is_error
+    assert count(session.conn, "escalations") == 0
+
+
+@pytest.mark.anyio
+async def test_escalate_accepts_reason_at_max_length(client):
+    result = await client.call_tool("escalate", {"reason": "x" * 500})
+    assert not result.is_error
