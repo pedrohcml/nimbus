@@ -193,6 +193,15 @@ def test_escalate_other_conversation_creates_new_conversation(conn):
     assert count(conn, "escalations") == 2
 
 
+def test_split_refunds_still_need_approval(conn):
+    first = refund(conn, idempotency_key="k1", amount_minor=20_000, approval_threshold_minor=30_000)
+    second = refund(
+        conn, idempotency_key="k2", amount_minor=14_900, approval_threshold_minor=30_000
+    )
+    assert first["status"] == "approved"
+    assert second["status"] == "pending_approval"
+
+
 @pytest.mark.parametrize(
     "error",
     [NotFoundError, ValidationError, DisputeAlreadyExistsError, IdempotencyConflictError],

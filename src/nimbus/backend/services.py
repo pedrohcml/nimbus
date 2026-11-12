@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timedelta
 
-DISPUTE_REASONS = {"unauthorized", "duplicate", "not_received", "wrongs_amount", "other"}
+DISPUTE_REASONS = {"unauthorized", "duplicate", "not_received", "wrong_amount", "other"}
 DISPUTE_WINDOW = timedelta(days=14)
 REFUND_APPROVAL_THRESHOLD_MINOR = 50_000
 ESCALATION_REASON_MAX_LENGTH = 500
@@ -149,7 +149,7 @@ def request_refund(
         if already_requested + amount_minor > tx["amount_minor"]:
             raise ValidationError("total refunds for this transaction would exceed its amount")
 
-        needs_approval = amount_minor > approval_threshold_minor
+        needs_approval = already_requested + amount_minor > approval_threshold_minor
         refund = {
             "id": f"rfd_{uuid.uuid4().hex[:12]}",
             "customer_id": customer_id,
