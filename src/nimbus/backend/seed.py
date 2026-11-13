@@ -1,5 +1,9 @@
+import argparse
 import random
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from nimbus.backend.db import connect_db, init_db
 
 BASE_TIME = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
 
@@ -160,3 +164,29 @@ def seed_db(conn, seed: int = 42) -> None:
         _insert_core_data(conn)
         _insert_scenarios(conn)
         _insert_background_data(conn, rng)
+
+
+def create_demo_db(path: str | Path, seed: int = 42) -> None:
+    """Build a seeded database file. Deletes the existing file first"""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.unlink(missing_ok=True)
+    conn = connect_db(str(path))
+    try:
+        init_db(conn)
+        seed_db(conn, seed=seed)
+    finally:
+        conn.close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Create the Nimbus demo database.")
+    parser.add_argument("--db", default="data/nimbus.db")
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    create_demo_db(args.db, seed=args.seed)
+    print(f"Demo database created at {args.db} (seed={args.seed})")
+
+
+if __name__ == "__main__":
+    main()
