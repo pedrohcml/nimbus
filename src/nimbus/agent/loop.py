@@ -71,6 +71,7 @@ async def run_turn(
                 step,
                 "llm_response",
                 text=response.text,
+                reasoning=response.reasoning,
                 tool_calls=[asdict(c) for c in response.tool_calls],
                 elapsed_ms=_elapsed_ms(started),
             )

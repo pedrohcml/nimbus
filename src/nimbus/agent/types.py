@@ -35,3 +35,4 @@ class ToolSpec:
 class LLMResponse:
     text: str = ""
     tool_calls: tuple[ToolCall, ...] = ()
+    reasoning: str = ""

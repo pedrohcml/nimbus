@@ -8,7 +8,9 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "groq>=1.7.0",
     "mcp[cli]>=2",
+    "python-dotenv>=1.2.4",
 ]
 
 [project.scripts]
@@ -42,3 +44,4 @@ fmt  = "ruff format ."
 fix  = "ruff check . --fix"
 demo-db = "python -m nimbus.backend.seed --db data/nimbus.db"
 serve = "python -m nimbus.mcp_server.app"
+chat = "python -m nimbus.agent.chat"

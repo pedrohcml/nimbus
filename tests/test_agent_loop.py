@@ -194,3 +194,11 @@ async def test_trace_is_json_serializable(tools):
     )
     result = await run(llm, tools)
     json.dumps(result.trace)
+
+
+async def test_trace_keeps_model_reasoning(tools):
+    llm = ScriptedLLM([LLMResponse(text="Hi!", reasoning="Greeting, no tool needed.")])
+    result = await run(llm, tools)
+    event = next(e for e in result.trace if e["type"] == "llm_response")
+    assert event["reasoning"] == "Greeting, no tool needed."
+    assert "no tool needed" not in result.answer
