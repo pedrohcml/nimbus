@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 scratch/
+traces/
 
 # Virtual environments
 .venv

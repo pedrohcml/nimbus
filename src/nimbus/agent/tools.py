@@ -1,8 +1,14 @@
-from typing import Any
+from typing import Any, Protocol
 
 from mcp import Client
 
 from nimbus.agent.types import ToolSpec
+
+
+class Tools(Protocol):
+    async def specs(self) -> list[ToolSpec]: ...
+
+    async def call(self, name: str, arguments: dict[str, Any]) -> tuple[str, bool]: ...
 
 
 class McpTools:
