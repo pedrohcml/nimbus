@@ -51,3 +51,29 @@ Tool descriptions are yet to be upgraded. They explain minor unites, saying that
 Local tooling note: the inspector didnt pass terminal environment variables to the server and had issues with my directory that has an accentuated character. Working command: 'npx @modelcontextprotocol/inspector -e NIMBUS_CUSTOMER_ID=cust_pedro -e NIMBUS_DB_PATH=C:\nimbus-data\nimbus.db uv run python -m nimbus.mcp_server.app'.
 
 Result (uv run poe test): 71 passed in 2.95s
+
+
+
+## Stage 3: llm
+
+The loop depends on an LLM protocol and neutral types ('Message', 'ToolCall', 'ToolSpec', 'LLMResponse'). Groq ('openai/gpt-oss-120b') is one adapter. Tests use a 'ScriptedLLM' so the loop is tested without network, cost or randomness.
+
+The agent talks to the MCP server and never to the database, so stage 2 guarantees also apply.
+
+Tool errors go back to the model as messages. Unknown tool names are answered with the list of real tools. A crashing tool returns a generic message. 'max_steps' stops loops with a fallback that offers a human. Provider errors are not caught in the loop.
+
+Every turn produces JSON line events with timings. Reasoning is stored but never shown to the customer. Traces contain customer data, so it's kept out of git.
+
+Manually evaluated the agent using 24 cases with 3 versions of the same prompt, each time fixing small parts of it until all 24 cases passed. v1 got 16 out of 24, v2 got 21 out of 24, and v3 also got 21 out of 24, but that's because in between v2 and v3 I forgot to reset the database, so junk data from v2 testing was left while testing v3. After reseting the database and rerunning the failing cases, all 3 passed.
+
+**Thoughts about the first 3 rounds of manual testing:**
+- Ambiguous instructions become errors ("never split a refund" was read as "no partial refunds"). State what is allowed and what is forbidden, and why.
+- Tool descriptions are part of the prompt. An outdated 'escalate' description made the model skip escalating suspected fraud.
+- Fixing the prompt can break cases that used to pass.
+- Results vary between runs of the same prompt.
+- A dirty database invalidated two cases. Each case needs a fresh database.
+- Rules that matter belong in code: refunds only for 'card_charge' and 'fee', escalation notes so new information such as suspected fraud is never dropped.
+
+Items that are stil open: Invented details in answers. Decide whether refunds are allowed while a dispute is open. Opaque IDs in eval data. Current date in the prompt. 'refunded_minor' in 'TransactionView'. Automatic check that every 'tx_' ID in an answer appeared in a tool result.
+
+Result (uv run poe test): 95 passed in 5.88s
