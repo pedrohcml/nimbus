@@ -143,6 +143,13 @@ def test_refund_above_threshold_needs_human_approval(conn):
     assert r["requires_approval"] == 1
 
 
+@pytest.mark.parametrize("transaction_id", ["tx_injection_memo"])
+def test_refund_only_for_charges(conn, transaction_id):
+    with pytest.raises(ValidationError):
+        refund(conn, transaction_id=transaction_id, amount_minor=1_000)
+    assert count(conn, "refund_requests") == 0
+
+
 def escalate_call(conn, **overrides):
     args = {
         "customer_id": "cust_pedro",
@@ -191,6 +198,23 @@ def test_escalate_other_conversation_creates_new_conversation(conn):
     escalate_call(conn)
     escalate_call(conn, conversation_id="conv-2")
     assert count(conn, "escalations") == 2
+
+
+def test_escalate_again_keeps_new_reason_as_note(conn):
+    first = escalate_call(conn, reason="Customer asks for a human agent.")
+    new_reason = "Customer reports a possible account takeover."
+    escalate_call(conn, reason=new_reason)
+    notes = conn.execute(
+        "select note from escalation_notes where escalation_id = ? order by id",
+        (first["id"],),
+    ).fetchall()
+    assert [row["note"] for row in notes] == [new_reason]
+
+
+def test_escalate_again_with_same_reason_adds_no_note(conn):
+    escalate_call(conn)
+    escalate_call(conn)
+    assert count(conn, "escalation_notes") == 0
 
 
 def test_split_refunds_still_need_approval(conn):

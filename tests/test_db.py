@@ -12,6 +12,7 @@ EXPECTED_TABLES = {
     "refund_requests",
     "idempotency_keys",
     "escalations",
+    "escalation_notes",
     "audit_log",
     "policy_documents",
 }

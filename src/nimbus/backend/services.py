@@ -8,6 +8,7 @@ DISPUTE_REASONS = {"unauthorized", "duplicate", "not_received", "wrong_amount", 
 DISPUTE_WINDOW = timedelta(days=14)
 REFUND_APPROVAL_THRESHOLD_MINOR = 50_000
 ESCALATION_REASON_MAX_LENGTH = 500
+REFUNDABLE_TYPES = {"card_charge", "fee"}
 
 
 class ServiceError(Exception):
@@ -138,6 +139,8 @@ def request_refund(
         tx = get_transaction(conn, customer_id, transaction_id)
         if tx["status"] != "completed":
             raise ValidationError(f"transaction is {tx['status']}, only completed can be refunded")
+        if tx["type"] not in REFUNDABLE_TYPES:
+            raise ValidationError(f"{tx['type']} transactions cannot be refunded")
         if amount_minor <= 0 or amount_minor > tx["amount_minor"]:
             raise ValidationError("amount_minor must be between 1 and the transaction amount")
 
@@ -207,6 +210,20 @@ def escalate(
             (conversation_id,),
         ).fetchone()
         if existing is not None:
+            if reason != existing["reason"]:
+                conn.execute(
+                    "insert into escalation_notes (escalation_id, note, created_at) "
+                    "values (?, ?, ?)",
+                    (existing["id"], reason, now.isoformat()),
+                )
+                _audit(
+                    conn,
+                    now=now,
+                    customer_id=customer_id,
+                    tool_name="escalate",
+                    args={"conversation_id": conversation_id},
+                    result_status="note_added",
+                )
             return dict(existing)
 
         escalation = {

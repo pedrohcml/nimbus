@@ -96,3 +96,10 @@ create table policy_documents (
     effective_to text,
     content_hash text not null
 );
+
+create table escalation_notes (
+    id integer primary key autoincrement,
+    escalation_id text not null references escalations(id),
+    note text not null,
+    created_at text not null
+);
