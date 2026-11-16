@@ -6,7 +6,13 @@ from mcp import Client
 
 from nimbus.backend import services
 from nimbus.backend.db import connect_db, init_db
-from nimbus.backend.seed import seed_db
+from nimbus.backend.seed import (
+    CUSTOMER_MAIN,
+    TX_DUPLICATE_B,
+    TX_OTHER_CUSTOMER,
+    TX_WITHDRAWAL_CONFIRMING,
+    seed_db,
+)
 from nimbus.mcp_server.server import DisputeReason, build_server
 from nimbus.mcp_server.session import Session
 
@@ -25,7 +31,7 @@ def session():
     seed_db(conn, seed=42)
     return Session(
         conn=conn,
-        customer_id="cust_pedro",
+        customer_id=CUSTOMER_MAIN,
         conversation_id="conv-test",
         clock=lambda: NOW,
     )
@@ -57,9 +63,7 @@ async def test_server_lists_get_transaction(client):
 
 @pytest.mark.anyio
 async def test_get_transaction_returns_own_transaction(client):
-    result = await client.call_tool(
-        "get_transaction", {"transaction_id": "tx_withdrawal_confirming"}
-    )
+    result = await client.call_tool("get_transaction", {"transaction_id": TX_WITHDRAWAL_CONFIRMING})
     assert not result.is_error
     assert result.structured_content["status"] == "confirming"
     assert "customer_id" not in result.structured_content
@@ -67,7 +71,7 @@ async def test_get_transaction_returns_own_transaction(client):
 
 @pytest.mark.anyio
 async def test_get_transaction_other_customer_not_found(client):
-    result = await client.call_tool("get_transaction", {"transaction_id": "tx_belongs_to_ricardo"})
+    result = await client.call_tool("get_transaction", {"transaction_id": TX_OTHER_CUSTOMER})
     assert result.is_error
     assert "not found" in result.content[0].text
 
@@ -88,7 +92,7 @@ async def test_open_dispute_schema_lists_valid_reasons(client):
 async def test_open_dispute_creates_dispute(client, session):
     result = await client.call_tool(
         "open_dispute",
-        {"transaction_id": "tx_duplicate_charge_b", "reason_code": "duplicate"},
+        {"transaction_id": TX_DUPLICATE_B, "reason_code": "duplicate"},
     )
     assert not result.is_error
     assert result.structured_content["status"] == "open"
@@ -100,7 +104,7 @@ async def test_open_dispute_creates_dispute(client, session):
 async def test_open_dispute_rejects_unknown_reason(client, session):
     result = await client.call_tool(
         "open_dispute",
-        {"transaction_id": "tx_duplicate_cahrge_b", "reason_code": "banana"},
+        {"transaction_id": TX_DUPLICATE_B, "reason_code": "banana"},
     )
     assert result.is_error
     assert count(session.conn, "disputes") == 0
@@ -108,7 +112,7 @@ async def test_open_dispute_rejects_unknown_reason(client, session):
 
 @pytest.mark.anyio
 async def test_open_dispute_twice_reports_existing(client, session):
-    args = {"transaction_id": "tx_duplicate_charge_b", "reason_code": "duplicate"}
+    args = {"transaction_id": TX_DUPLICATE_B, "reason_code": "duplicate"}
     await client.call_tool("open_dispute", args)
     result = await client.call_tool("open_dispute", args)
     assert result.is_error
@@ -120,7 +124,7 @@ async def test_open_dispute_twice_reports_existing(client, session):
 async def test_open_dispute_other_customers_transaction(client, session):
     result = await client.call_tool(
         "open_dispute",
-        {"transaction_id": "tx_belongs_to_ricardo", "reason_code": "other"},
+        {"transaction_id": TX_OTHER_CUSTOMER, "reason_code": "other"},
     )
     assert result.is_error
     assert "not found" in result.content[0].text
@@ -134,7 +138,7 @@ async def strict_client(session):
         yield c
 
 
-REFUND_ARGS = {"transaction_id": "tx_duplicate_charge_b", "amount_minor": 34_900}
+REFUND_ARGS = {"transaction_id": TX_DUPLICATE_B, "amount_minor": 34_900}
 
 
 @pytest.mark.anyio
@@ -163,7 +167,7 @@ async def test_refund_above_threshold_waits_for_human(strict_client):
 @pytest.mark.anyio
 async def test_refund_rejects_non_positive_amount(client, session):
     result = await client.call_tool(
-        "request_refund", {"transaction_id": "tx_duplicate_charge_b", "amount_minor": 0}
+        "request_refund", {"transaction_id": TX_DUPLICATE_B, "amount_minor": 0}
     )
     assert result.is_error
     assert count(session.conn, "refund_requests") == 0
@@ -172,7 +176,7 @@ async def test_refund_rejects_non_positive_amount(client, session):
 @pytest.mark.anyio
 async def test_refund_on_other_customers_transaction(client, session):
     result = await client.call_tool(
-        "request_refund", {"transaction_id": "tx_belongs_to_ricardo", "amount_minor": 1_000}
+        "request_refund", {"transaction_id": TX_OTHER_CUSTOMER, "amount_minor": 1_000}
     )
     assert result.is_error
     assert "not found" in result.content[0].text
@@ -195,7 +199,7 @@ async def test_escalate_opens_escalation_for_session_conversation(client, sessio
     assert result.structured_content["status"] == "open"
     row = session.conn.execute("select conversation_id, customer_id from escalations").fetchone()
     assert row["conversation_id"] == "conv-test"
-    assert row["customer_id"] == "cust_pedro"
+    assert row["customer_id"] == CUSTOMER_MAIN
 
 
 @pytest.mark.anyio

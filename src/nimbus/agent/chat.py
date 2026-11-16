@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 import anyio
@@ -9,7 +10,7 @@ from mcp import Client
 
 from nimbus.agent.groq_llm import GroqLLM
 from nimbus.agent.loop import run_turn
-from nimbus.agent.prompts import SYSTEM_PROMPT
+from nimbus.agent.prompts import build_system_prompt
 from nimbus.agent.tools import McpTools
 from nimbus.agent.trace import write_trace
 from nimbus.agent.types import Message
@@ -43,12 +44,12 @@ async def main() -> None:
                 result = await run_turn(
                     llm=llm,
                     tools=tools,
-                    system_prompt=SYSTEM_PROMPT,
+                    system_prompt=build_system_prompt(datetime.now(UTC)),
                     history=history,
                     user_text=user_text,
                 )
             except APIError as error:
-                print(f"\n[error in the model provider: {type(error).__anme__}] Try again.")
+                print(f"\n[error in the model provider: {type(error).__name__}] Try again.")
                 continue
             write_trace(trace_path, result.trace)
             history = result.messages[1:]

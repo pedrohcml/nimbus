@@ -4,7 +4,7 @@ import pytest
 from mcp import Client
 
 from nimbus.backend.db import connect_db, init_db
-from nimbus.backend.seed import seed_db
+from nimbus.backend.seed import CUSTOMER_MAIN, seed_db
 from nimbus.mcp_server.server import build_server
 from nimbus.mcp_server.session import Session
 
@@ -18,7 +18,7 @@ def session():
     seed_db(conn, seed=42)
     return Session(
         conn=conn,
-        customer_id="cust_pedro",
+        customer_id=CUSTOMER_MAIN,
         conversation_id="conv-test",
         clock=lambda: NOW,
     )

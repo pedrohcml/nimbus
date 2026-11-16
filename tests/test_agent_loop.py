@@ -6,6 +6,12 @@ from nimbus.agent.llm import ScriptedLLM
 from nimbus.agent.loop import FALLBACK_ANSWER, run_turn
 from nimbus.agent.tools import McpTools
 from nimbus.agent.types import LLMResponse, ToolCall
+from nimbus.backend.seed import (
+    TX_DUPLICATE_A,
+    TX_DUPLICATE_B,
+    TX_OTHER_CUSTOMER,
+    TX_WITHDRAWAL_CONFIRMING,
+)
 
 pytestmark = pytest.mark.anyio
 
@@ -73,7 +79,7 @@ async def test_calls_tool_and_feeds_result_back(tools):
                     ToolCall(
                         id="call_1",
                         name="get_transaction",
-                        arguments={"transaction_id": "tx_withdrawal_confirming"},
+                        arguments={"transaction_id": TX_WITHDRAWAL_CONFIRMING},
                     ),
                 )
             ),
@@ -93,7 +99,7 @@ async def test_calls_tool_and_feeds_result_back(tools):
 async def test_tool_error_fed_back_loop_continues(tools):
     llm = ScriptedLLM(
         [
-            use(call("get_transaction", transaction_id="tx_belongs_to_ricardo")),
+            use(call("get_transaction", transaction_id=TX_OTHER_CUSTOMER)),
             say("I could not find that transaction."),
         ]
     )
@@ -117,7 +123,7 @@ async def test_unknown_tool_reported_without_calling_server(tools):
 async def test_crashing_tool_does_not_leak_internal_details(tools):
     llm = ScriptedLLM(
         [
-            use(call("get_transaction", transaction_id="tx_withdrawal_confirming")),
+            use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING)),
             say("Something went wrong."),
         ]
     )
@@ -132,8 +138,8 @@ async def test_multiple_tool_calls_run_in_order(tools):
     llm = ScriptedLLM(
         [
             use(
-                call("get_transaction", "c1", transaction_id="tx_duplicate_charge_a"),
-                call("get_transaction", "c2", transaction_id="tx_duplicate_charge_b"),
+                call("get_transaction", "c1", transaction_id=TX_DUPLICATE_A),
+                call("get_transaction", "c2", transaction_id=TX_DUPLICATE_B),
             ),
             say("You were charged twice."),
         ]
@@ -145,7 +151,7 @@ async def test_multiple_tool_calls_run_in_order(tools):
 
 
 async def test_stops_at_max_steps(tools):
-    again = use(call("get_transaction", transaction_id="tx_withdrawal_confirming"))
+    again = use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING))
     llm = ScriptedLLM([again, again])
     result = await run(llm, tools, max_steps=2)
     assert result.stop_reason == "max_steps"
@@ -155,7 +161,7 @@ async def test_stops_at_max_steps(tools):
 
 async def test_trace_records_turn_in_order(tools):
     llm = ScriptedLLM(
-        [use(call("get_transaction", transaction_id="tx_withdrawal_confirming")), say("Done.")]
+        [use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING)), say("Done.")]
     )
     result = await run(llm, tools)
     assert [e["type"] for e in result.trace] == [
@@ -174,7 +180,7 @@ async def test_trace_records_turn_in_order(tools):
 
 async def test_trace_marks_tool_errors(tools):
     llm = ScriptedLLM(
-        [use(call("get_transaction", transaction_id="tx_belongs_to_ricardo")), say("Not found.")]
+        [use(call("get_transaction", transaction_id=TX_OTHER_CUSTOMER)), say("Not found.")]
     )
     result = await run(llm, tools)
     tool_event = next(e for e in result.trace if e["type"] == "tool_result")
@@ -182,7 +188,7 @@ async def test_trace_marks_tool_errors(tools):
 
 
 async def test_trace_records_max_steps(tools):
-    again = use(call("get_transaction", transaction_id="tx_withdrawal_confirming"))
+    again = use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING))
     result = await run(ScriptedLLM([again, again]), tools, max_steps=2)
     assert result.trace[-1]["type"] == "turn_end"
     assert result.trace[-1]["stop_reason"] == "max_steps"
@@ -190,7 +196,7 @@ async def test_trace_records_max_steps(tools):
 
 async def test_trace_is_json_serializable(tools):
     llm = ScriptedLLM(
-        [use(call("get_transaction", transaction_id="tx_withdrawal_confirming")), say("Done.")]
+        [use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING)), say("Done.")]
     )
     result = await run(llm, tools)
     json.dumps(result.trace)

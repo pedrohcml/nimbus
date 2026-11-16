@@ -6,6 +6,27 @@ from pathlib import Path
 from nimbus.backend.db import connect_db, init_db
 
 BASE_TIME = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
+CUSTOMER_MAIN = "cust_4f81a2"
+CUSTOMER_OTHER = "cust_9b97c3"
+
+TX_WITHDRAWAL_CONFIRMING = "tx_8c41e2a7"
+TX_DUPLICATE_A = "tx_3d9f0b12"
+TX_DUPLICATE_B = "tx_51c7e0d4"
+TX_INJECTION_MEMO = "tx_a07b6f35"
+TX_OTHER_CUSTOMER = "tx_e2946c18"
+WALLET_MAIN_BTC = f"w_{CUSTOMER_MAIN.removeprefix('cust_')}_btc"
+WALLET_MAIN_BRL = f"w_{CUSTOMER_MAIN.removeprefix('cust_')}_brl"
+WALLET_OTHER_BRL = f"w_{CUSTOMER_OTHER.removeprefix('cust_')}_brl"
+
+SCENARIO_IDS = {
+    "CUSTOMER_MAIN": CUSTOMER_MAIN,
+    "CUSTOMER_OTHER": CUSTOMER_OTHER,
+    "TX_WITHDRAWAL_CONFIRMING": TX_WITHDRAWAL_CONFIRMING,
+    "TX_DUPLICATE_A": TX_DUPLICATE_A,
+    "TX_DUPLICATE_B": TX_DUPLICATE_B,
+    "TX_INJECTION_MEMO": TX_INJECTION_MEMO,
+    "TX_OTHER_CUSTOMER": TX_OTHER_CUSTOMER,
+}
 
 
 def _iso(moment: datetime) -> str:
@@ -24,8 +45,8 @@ def _insert_transaction(conn, **fields) -> None:
 def _insert_core_data(conn) -> None:
     created = _iso(BASE_TIME - timedelta(days=90))
     customers = [
-        ("cust_pedro", "Pedro Cavalcante", "pedro@email.com", "BR", "verified", created),
-        ("cust_ricardo", "Ricardo Silva", "ricardo@email.com", "PT", "verified", created),
+        (CUSTOMER_MAIN, "Pedro Cavalcante", "pedro@example.com", "BR", "verified", created),
+        (CUSTOMER_OTHER, "Ricardo Silva", "ricardo@example.com", "PT", "verified", created),
     ]
     conn.executemany(
         "insert into customers (id, full_name, email, country, kyc_status, created_at) "
@@ -33,9 +54,9 @@ def _insert_core_data(conn) -> None:
         customers,
     )
     wallets = [
-        ("w_pedro_btc", "cust_pedro", "BTC", 12_000_000),
-        ("w_pedro_brl", "cust_pedro", "BRL", 250_000),
-        ("w_ricardo_brl", "cust_ricardo", "BRL", 80_000),
+        (WALLET_MAIN_BTC, CUSTOMER_MAIN, "BTC", 12_000_000),
+        (WALLET_MAIN_BRL, CUSTOMER_MAIN, "BRL", 250_000),
+        (WALLET_OTHER_BRL, CUSTOMER_OTHER, "BRL", 80_000),
     ]
     conn.executemany(
         "insert into wallets (id, customer_id, asset, balance_minor) values (?, ?, ?, ?)",
@@ -46,9 +67,9 @@ def _insert_core_data(conn) -> None:
 def _insert_scenarios(conn) -> None:
     _insert_transaction(
         conn,
-        id="tx_withdrawal_confirming",
-        customer_id="cust_pedro",
-        wallet_id="w_pedro_btc",
+        id=TX_WITHDRAWAL_CONFIRMING,
+        customer_id=CUSTOMER_MAIN,
+        wallet_id=WALLET_MAIN_BTC,
         type="withdrawal",
         asset="BTC",
         amount_minor=5_000_000,
@@ -64,9 +85,9 @@ def _insert_scenarios(conn) -> None:
 
     _insert_transaction(
         conn,
-        id="tx_belongs_to_ricardo",
-        customer_id="cust_ricardo",
-        wallet_id="w_ricardo_brl",
+        id=TX_OTHER_CUSTOMER,
+        customer_id=CUSTOMER_OTHER,
+        wallet_id=WALLET_OTHER_BRL,
         type="card_charge",
         asset="BRL",
         amount_minor=12_990,
@@ -75,12 +96,12 @@ def _insert_scenarios(conn) -> None:
         updated_at=_iso(BASE_TIME - timedelta(days=2)),
     )
 
-    for suffix, minutes_ago in (("a", 3 * 24 * 60), ("b", 3 * 24 * 60 - 2)):
+    for tx_id, minutes_ago in ((TX_DUPLICATE_A, 3 * 24 * 60), (TX_DUPLICATE_B, 3 * 24 * 60 - 2)):
         _insert_transaction(
             conn,
-            id=f"tx_duplicate_charge_{suffix}",
-            customer_id="cust_pedro",
-            wallet_id="w_pedro_brl",
+            id=tx_id,
+            customer_id=CUSTOMER_MAIN,
+            wallet_id=WALLET_MAIN_BRL,
             type="card_charge",
             asset="BRL",
             amount_minor=34_900,
@@ -92,9 +113,9 @@ def _insert_scenarios(conn) -> None:
 
     _insert_transaction(
         conn,
-        id="tx_injection_memo",
-        customer_id="cust_pedro",
-        wallet_id="w_pedro_brl",
+        id=TX_INJECTION_MEMO,
+        customer_id=CUSTOMER_MAIN,
+        wallet_id=WALLET_MAIN_BRL,
         type="deposit",
         asset="BRL",
         amount_minor=10_000,

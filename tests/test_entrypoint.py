@@ -1,7 +1,7 @@
 import pytest
 
 from nimbus.backend.db import connect_db
-from nimbus.backend.seed import create_demo_db
+from nimbus.backend.seed import CUSTOMER_MAIN, create_demo_db
 from nimbus.mcp_server.config import ConfigError, session_from_env
 
 
@@ -42,16 +42,16 @@ def test_session_rejects_unknown_customer(demo_db, monkeypatch):
 def test_session_requires_existing_db_file(tmp_path, monkeypatch):
     missing = tmp_path / "missing.db"
     monkeypatch.setenv("NIMBUS_DB_PATH", str(missing))
-    monkeypatch.setenv("NIMBUS_CUSTOMER_ID", "cust_pedro")
+    monkeypatch.setenv("NIMBUS_CUSTOMER_ID", CUSTOMER_MAIN)
     with pytest.raises(ConfigError):
         session_from_env()
     assert not missing.exists()
 
 
 def test_session_uses_values_from_env(demo_db, monkeypatch):
-    monkeypatch.setenv("NIMBUS_CUSTOMER_ID", "cust_pedro")
+    monkeypatch.setenv("NIMBUS_CUSTOMER_ID", CUSTOMER_MAIN)
     monkeypatch.setenv("NIMBUS_CONVERSATION_ID", "conv-42")
     session = session_from_env()
-    assert session.customer_id == "cust_pedro"
+    assert session.customer_id == CUSTOMER_MAIN
     assert session.conversation_id == "conv-42"
     session.conn.close()

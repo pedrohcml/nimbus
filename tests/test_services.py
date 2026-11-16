@@ -3,7 +3,14 @@ from datetime import UTC, datetime
 import pytest
 
 from nimbus.backend.db import connect_db, init_db
-from nimbus.backend.seed import seed_db
+from nimbus.backend.seed import (
+    CUSTOMER_MAIN,
+    TX_DUPLICATE_B,
+    TX_INJECTION_MEMO,
+    TX_OTHER_CUSTOMER,
+    TX_WITHDRAWAL_CONFIRMING,
+    seed_db,
+)
 from nimbus.backend.services import (
     DisputeAlreadyExistsError,
     IdempotencyConflictError,
@@ -29,13 +36,13 @@ def conn():
 
 
 def test_get_transaction_returns_own_transaction(conn):
-    tx = get_transaction(conn, "cust_pedro", "tx_withdrawal_confirming")
+    tx = get_transaction(conn, CUSTOMER_MAIN, TX_WITHDRAWAL_CONFIRMING)
     assert tx["status"] == "confirming"
 
 
 def test_get_transaction_hides_other_customers_transaction(conn):
     with pytest.raises(NotFoundError):
-        get_transaction(conn, "cust_pedro", "tx_belongs_to_ricardo")
+        get_transaction(conn, CUSTOMER_MAIN, TX_OTHER_CUSTOMER)
 
 
 def count(conn, table):
@@ -43,43 +50,41 @@ def count(conn, table):
 
 
 def test_open_dispute_creates_open_dispute(conn):
-    dispute = open_dispute(
-        conn, "cust_pedro", "tx_duplicate_charge_b", reason_code="duplicate", now=NOW
-    )
+    dispute = open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
     assert dispute["status"] == "open"
     assert dispute["reason_code"] == "duplicate"
-    assert dispute["transaction_id"] == "tx_duplicate_charge_b"
+    assert dispute["transaction_id"] == TX_DUPLICATE_B
 
 
 def test_open_dispute_writes_audit_log(conn):
     before = count(conn, "audit_log")
-    open_dispute(conn, "cust_pedro", "tx_duplicate_charge_b", reason_code="duplicate", now=NOW)
+    open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
     assert count(conn, "audit_log") == before + 1
 
 
 def test_open_dispute_rejects_invalid_reason(conn):
     with pytest.raises(ValidationError):
-        open_dispute(conn, "cust_pedro", "tx_duplicate_charge_b", reason_code="banana", now=NOW)
+        open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="banana", now=NOW)
     assert count(conn, "disputes") == 0
 
 
 def test_open_dispute_on_other_customers_transaction(conn):
     with pytest.raises(NotFoundError):
-        open_dispute(conn, "cust_pedro", "tx_belongs_to_ricardo", reason_code="duplicate", now=NOW)
+        open_dispute(conn, CUSTOMER_MAIN, TX_OTHER_CUSTOMER, reason_code="duplicate", now=NOW)
     assert count(conn, "disputes") == 0
 
 
 def test_open_dispute_twice_same_transaction(conn):
-    open_dispute(conn, "cust_pedro", "tx_duplicate_charge_b", reason_code="duplicate", now=NOW)
+    open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
     with pytest.raises(DisputeAlreadyExistsError):
-        open_dispute(conn, "cust_pedro", "tx_duplicate_charge_b", reason_code="duplicate", now=NOW)
+        open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
     assert count(conn, "disputes") == 1
 
 
 def refund(conn, **overrides):
     args = {
-        "customer_id": "cust_pedro",
-        "transaction_id": "tx_duplicate_charge_b",
+        "customer_id": CUSTOMER_MAIN,
+        "transaction_id": TX_DUPLICATE_B,
         "amount_minor": 34_900,
         "idempotency_key": "key-1",
         "now": NOW,
@@ -103,12 +108,12 @@ def test_refund_rejects_invalid_amount(conn, amount):
 
 def test_refund_on_other_customers_transaction(conn):
     with pytest.raises(NotFoundError):
-        refund(conn, transaction_id="tx_belongs_to_ricardo")
+        refund(conn, transaction_id=TX_OTHER_CUSTOMER)
 
 
 def test_refund_requires_completed_transaction(conn):
     with pytest.raises(ValidationError):
-        refund(conn, transaction_id="tx_withdrawal_confirming", amount_minor=1_000)
+        refund(conn, transaction_id=TX_WITHDRAWAL_CONFIRMING, amount_minor=1_000)
 
 
 def test_refund_writes_audit_log(conn):
@@ -143,7 +148,7 @@ def test_refund_above_threshold_needs_human_approval(conn):
     assert r["requires_approval"] == 1
 
 
-@pytest.mark.parametrize("transaction_id", ["tx_injection_memo"])
+@pytest.mark.parametrize("transaction_id", [TX_INJECTION_MEMO])
 def test_refund_only_for_charges(conn, transaction_id):
     with pytest.raises(ValidationError):
         refund(conn, transaction_id=transaction_id, amount_minor=1_000)
@@ -152,7 +157,7 @@ def test_refund_only_for_charges(conn, transaction_id):
 
 def escalate_call(conn, **overrides):
     args = {
-        "customer_id": "cust_pedro",
+        "customer_id": CUSTOMER_MAIN,
         "conversation_id": "conv-1",
         "reason": "Customer asks for a human agent",
         "now": NOW,

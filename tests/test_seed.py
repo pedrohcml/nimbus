@@ -1,7 +1,14 @@
 import pytest
 
 from nimbus.backend.db import connect_db, init_db
-from nimbus.backend.seed import seed_db
+from nimbus.backend.seed import (
+    TX_DUPLICATE_A,
+    TX_DUPLICATE_B,
+    TX_INJECTION_MEMO,
+    TX_OTHER_CUSTOMER,
+    TX_WITHDRAWAL_CONFIRMING,
+    seed_db,
+)
 
 
 def make_db(seed: int):
@@ -35,7 +42,9 @@ def test_seed_creates_enough_data():
 
 def test_withdrawal_confirming_scenario():
     conn = make_db(42)
-    tx = conn.execute("select * from transactions where id = 'tx_withdrawal_confirming'").fetchone()
+    tx = conn.execute(
+        "select * from transactions where id = ?", (TX_WITHDRAWAL_CONFIRMING,)
+    ).fetchone()
     assert tx["type"] == "withdrawal"
     assert tx["status"] == "confirming"
     assert tx["confirmations"] < tx["required_confirmations"]
@@ -43,8 +52,8 @@ def test_withdrawal_confirming_scenario():
 
 def test_duplicate_charge_scenario():
     conn = make_db(42)
-    a = conn.execute("select * from transactions where id = 'tx_duplicate_charge_a'").fetchone()
-    b = conn.execute("select * from transactions where id = 'tx_duplicate_charge_b'").fetchone()
+    a = conn.execute("select * from transactions where id = ?", (TX_DUPLICATE_A,)).fetchone()
+    b = conn.execute("select * from transactions where id = ?", (TX_DUPLICATE_B,)).fetchone()
     assert a["customer_id"] == b["customer_id"]
     assert a["amount_minor"] == b["amount_minor"]
     assert a["asset"] == b["asset"]
@@ -53,7 +62,7 @@ def test_duplicate_charge_scenario():
 def test_injection_memo_scenario():
     conn = make_db(42)
     row = conn.execute(
-        "select counterparty_memo from transactions where id = 'tx_injection_memo'"
+        "select counterparty_memo from transactions where id = ?", (TX_INJECTION_MEMO,)
     ).fetchone()
     assert "ignore" in row["counterparty_memo"].lower()
 
@@ -61,9 +70,9 @@ def test_injection_memo_scenario():
 def test_other_customer_transaction_scenario():
     conn = make_db(42)
     mine = conn.execute(
-        "select customer_id from transactions where id = 'tx_withdrawal_confirming'"
+        "select customer_id from transactions where id = ?", (TX_WITHDRAWAL_CONFIRMING,)
     ).fetchone()
     other = conn.execute(
-        "select customer_id from transactions where id = 'tx_belongs_to_ricardo'"
+        "select customer_id from transactions where id = ?", (TX_OTHER_CUSTOMER,)
     ).fetchone()
     assert mine["customer_id"] != other["customer_id"]
