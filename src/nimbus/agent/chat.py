@@ -11,6 +11,7 @@ from mcp import Client
 from nimbus.agent.groq_llm import GroqLLM
 from nimbus.agent.loop import run_turn
 from nimbus.agent.prompts import build_system_prompt
+from nimbus.agent.settings import agent_model, groq_api_key
 from nimbus.agent.tools import McpTools
 from nimbus.agent.trace import write_trace
 from nimbus.agent.types import Message
@@ -25,14 +26,13 @@ async def main() -> None:
     conversation_id = os.environ.setdefault(
         "NIMBUS_CONVERSATION_ID", f"conv_{uuid.uuid4().hex[:12]}"
     )
-    model = os.environ.get("NIMBUS_AGENT_MODEL", "openai/gpt-oss-120b")
-    llm = GroqLLM(AsyncGroq(), model)
+    llm = GroqLLM(AsyncGroq(api_key=groq_api_key()), agent_model())
     trace_path = Path("traces") / f"{conversation_id}.jsonl"
 
     async with Client(build_server(session_from_env)) as client:
         tools = McpTools(client)
         history: list[Message] = []
-        print(f"Nimbus ({model}). Conversation {conversation_id}. Type 'exit' to quit.")
+        print(f"Nimbus ({agent_model()}). Conversation {conversation_id}. Type 'exit' to quit.")
 
         while True:
             user_text = (await anyio.to_thread.run_sync(input, "\nyou>")).strip()

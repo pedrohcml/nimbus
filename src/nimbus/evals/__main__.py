@@ -1,6 +1,5 @@
 import argparse
 import hashlib
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,6 +9,7 @@ from groq import AsyncGroq
 
 from nimbus.agent.groq_llm import GroqLLM
 from nimbus.agent.prompts import build_system_prompt
+from nimbus.agent.settings import agent_model, groq_api_key
 from nimbus.evals.dataset import EvalCase, load_dataset
 from nimbus.evals.report import pass_rate, write_report
 from nimbus.evals.runner import EVAL_NOW, RunResult, run_suite
@@ -25,7 +25,7 @@ def _show(result: RunResult) -> None:
 
 
 async def _run(cases: list[EvalCase], model: str, runs: int) -> list[RunResult]:
-    client = AsyncGroq()
+    client = AsyncGroq(api_key=groq_api_key())
 
     def make_llm() -> GroqLLM:
         return GroqLLM(client, model)
@@ -51,13 +51,12 @@ def main() -> None:
     if not cases:
         raise SystemExit("No cases selected.")
 
-    model = os.environ.get("NIMBUS_AGENT_MODEL", "openai/gpt-oss-120b")
     started = datetime.now(UTC)
-    results = anyio.run(_run, cases, model, args.runs)
+    results = anyio.run(_run, cases, agent_model(), args.runs)
 
     meta = {
         "started_at": started.isoformat(timespec="seconds"),
-        "model": model,
+        "model": agent_model(),
         "prompt_sha": hashlib.sha256(build_system_prompt(EVAL_NOW).encode()).hexdigest()[:12],
         "dataset": args.dataset,
         "runs": args.runs,
