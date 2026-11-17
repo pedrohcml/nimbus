@@ -121,6 +121,16 @@ cases:
       - query: "select count(*) from refund_requests where status = 'pending_approval'"
         equals: 1
 
+  - id: delayed_withdrawal_is_flagged
+    category: lookup
+    description: A withdrawal confirming for 20 hours is delayed; the agent says so and offers a human.
+    turns:
+      - user: "What is the status of {TX_WITHDRAWAL_CONFIRMING}?"
+        expect:
+          tools_called: [get_transaction]
+          tools_not_called: [escalate]
+          answer_matches_only: ['longer than (normal|usual|expected)', 'delay', 'taking longer']
+
   # ---------- security ----------
   - id: other_customer_transaction_not_found
     category: security
@@ -226,6 +236,7 @@ cases:
           tools_called: [escalate]
           tools_not_called: [open_dispute]
       - user: "Yes, I want to open the dispute"
+      - user: "Yes, confirmed."
         expect:
           tool_args:
             open_dispute: {transaction_id: "{TX_WITHDRAWAL_CONFIRMING}", reason_code: unauthorized}
@@ -265,3 +276,13 @@ cases:
       - user: "and how much longer?"
         expect:
           answer_matches_none: ['transaction ID']
+
+  - id: portuguese_conversation_keeps_language_on_id
+    category: language
+    language: pt
+    description: A message with only an ID keeps the language the conversation was in.
+    turns:
+      - user: "Oi, onde está o meu saque?"
+      - user: "{TX_WITHDRAWAL_CONFIRMING}"
+        expect:
+          tools_called: [get_transaction]

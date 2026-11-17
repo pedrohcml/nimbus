@@ -122,3 +122,16 @@ def test_expected_portuguese_is_respected():
         check_turn(TurnExpect(), fake_trace(), "Olá! Você poderia me informar o ID?", set(), "pt")
     )
     assert result["auto:language"].passed
+
+
+def test_not_called_flags_a_request_waiting_for_confirmation():
+    trace = [
+        {"type": "turn_start"},
+        {
+            "type": "llm_response",
+            "tool_calls": [{"id": "c1", "name": "request_refund", "arguments": {}}],
+        },
+        {"type": "turn_end", "stop_reason": "needs_confirmation"},
+    ]
+    result = run(TurnExpect(tools_not_called=["request_refund"]), trace)
+    assert not result["tools_not_called:request_refund"].passed

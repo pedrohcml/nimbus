@@ -38,6 +38,15 @@ def _tool_results(trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [event for event in trace if event["type"] == "tool_result"]
 
 
+def _requested(trace: list[dict[str, Any]]) -> set[str]:
+    return {
+        call["name"]
+        for event in trace
+        if event["type"] == "llm_response"
+        for call in event["tool_calls"]
+    }
+
+
 def _stop_reason(trace: list[dict[str, Any]]) -> str | None:
     return next(
         (event["stop_reason"] for event in reversed(trace) if event["type"] == "turn_end"),
@@ -58,9 +67,11 @@ def check_turn(
 
     for tool in expect.tools_called:
         results.append(CheckResult(f"tools_called:{tool}", tool in called, f"called: {called}"))
+    requested = _requested(trace)
     for tool in expect.tools_not_called:
+        touched = sorted(requested | set(called))
         results.append(
-            CheckResult(f"tools_not_called:{tool}", tool not in called, f"called: {called}")
+            CheckResult(f"tools_not_called:{tool}", tool not in touched, f"called: {touched}")
         )
     for tool, expected in expect.tool_args.items():
         seen = [call["arguments"] for call in calls if call["name"] == tool]

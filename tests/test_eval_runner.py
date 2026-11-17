@@ -112,10 +112,7 @@ async def test_provider_failure_is_error_not_failure():
 
 async def test_action_waits_for_confirmation_turn():
     refund = case(
-        Turn(
-            user=f"Refund R$ 100 of {TX_DUPLICATE_B}",
-            expect=TurnExpect(tools_not_called=["request_refund"]),
-        ),
+        Turn(user=f"Refund R$ 100 of {TX_DUPLICATE_B}"),
         Turn(user="Yes, confirmed.", expect=TurnExpect(tools_called=["request_refund"])),
         db=[DbCheck(query="select count(*) from refund_requests", equals=1)],
     )
