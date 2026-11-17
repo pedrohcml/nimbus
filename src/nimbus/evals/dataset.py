@@ -51,6 +51,7 @@ class EvalCase(_Strict):
     approval_threshold_minor: int | None = None
     turns: list[Turn] = Field(min_length=1)
     db: list[DbCheck] = Field(default_factory=list)
+    language: Literal["en", "pt"] = "en"
 
 
 def resolve_placeholders(text: str, values: dict[str, str]) -> str:

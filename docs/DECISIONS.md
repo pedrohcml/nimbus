@@ -77,3 +77,29 @@ Manually evaluated the agent using 24 cases with 3 versions of the same prompt, 
 Items that are stil open: Invented details in answers. Decide whether refunds are allowed while a dispute is open. Opaque IDs in eval data. Current date in the prompt. 'refunded_minor' in 'TransactionView'. Automatic check that every 'tx_' ID in an answer appeared in a tool result.
 
 Result (uv run poe test): 95 passed in 5.88s
+
+
+
+## stage 4: eval harness
+
+Tool calls, tool arguments, final database state, regexes on the answer, plus automatic checks on every turn. The turn finished without hitting max_steps, every tx_ ID in the answer appeared earlier in the conversation (customer messages or tool results, never the model's own arguments), no internal names leak (amount_minor, pending_approval etc.), and the answer is in the expected language.
+
+Each run is isolated and reproducible. Fresh in-memory database, fixed clock and session built from the case. A dirty database invalidated cases in stage 3.
+
+Opaque scenatio IDs: Descriptive IDs ('tx_belongs_to_ricardo') biased the model. Seed IDs are now opaque, tests use named constants and the dataset uses placeholders resolved by the loader.
+
+A misspeled key is an error instead of a disaled check. Unknown placeholders and duplicate case IDs are errors. DB checks must be 'select' queries as they wuote the IDs inline.
+
+Cases that fixed when the agent acts or which words it uses failed for valid behavior (asking for confirmation, "2 of the required 3"). Cases now check effects wherever possible.
+
+Runs end as passed, failed or error. Pass rate = passed / (passed + failed). Provider or harness errors are counted separately so a rate limit never looks like a worse agent. Each report records model, prompt hash and dataset, so results are only compared within the same prompt version.
+
+Several runs per case (3 by default), becuase results may vary between runs.
+
+Couldn't test everything until 100% due to rate limits from Groq. The free tier allows 200k tokens per day for GPT-OSS-120B, about one full suite.
+
+Markdown summaries are commited as the history of results. JSON filed are ignored by git.
+
+Known limits: The language check is a word-list heuristic. An example ID such as tx_123 is flagged as invented. Token usage is not recorded yet, so the cost of the suite is no more than an estimation.
+
+Result (uv run poe test): 127 passed in 2.25s
