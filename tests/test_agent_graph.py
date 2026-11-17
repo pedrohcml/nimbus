@@ -1,5 +1,6 @@
 import pytest
 
+from nimbus.agent.confirmation import format_amount, is_confirmation
 from nimbus.agent.graph import build_agent_graph, run_graph_turn
 from nimbus.agent.llm import ScriptedLLM
 from nimbus.agent.loop import FALLBACK_ANSWER
@@ -11,7 +12,7 @@ from nimbus.agent.types import (
     message_from_dict,
     message_to_dict,
 )
-from nimbus.backend.seed import TX_WITHDRAWAL_CONFIRMING
+from nimbus.backend.seed import TX_DUPLICATE_B, TX_WITHDRAWAL_CONFIRMING
 
 pytestmark = pytest.mark.anyio
 
@@ -26,6 +27,10 @@ def use(*calls):
 
 def call(name, call_id="c1", **arguments):
     return ToolCall(id=call_id, name=name, arguments=arguments)
+
+
+def count(conn, table):
+    return conn.execute(f"select count(*) from {table}").fetchone()[0]
 
 
 async def build(llm, client, max_steps=6):
@@ -118,3 +123,73 @@ async def test_each_turn_returns_onlt_its_own_trace(client):
     await run_graph_turn(graph, thread_id="t1", user_text="first")
     second = await run_graph_turn(graph, thread_id="t1", user_text="second")
     assert [event["type"] for event in second.trace] == ["turn_start", "llm_response", "turn_end"]
+
+
+@pytest.mark.parametrize(
+    "reply", ["yes", "Yes, confirmed.", "ok", "Sim", "sim, pode abrir", "Go ahead"]
+)
+def test_confirmations(reply):
+    assert is_confirmation(reply)
+
+
+@pytest.mark.parametrize(
+    "reply", ["no", "No, cancel it", "não", "wait, how much?", "yes... actualy no"]
+)
+def test_not_confirmations(reply):
+    assert not is_confirmation(reply)
+
+
+def test_format_amount():
+    assert format_amount(34_900, "BRL", "en") == "R$ 349.00"
+    assert format_amount(34_900, "BRL", "pt") == "R$ 349,00"
+    assert format_amount(123_456_789, "BRL", "pt") == "R$ 1.234.567,89"
+    assert format_amount(20_000, "BTC", "en") == "0.0002 BTC"
+
+
+REFUND = use(call("request_refund", transaction_id=TX_DUPLICATE_B, amount_minor=10_000))
+
+
+async def test_refund_waits_for_confirmation(client, session):
+    graph = await build(ScriptedLLM([REFUND, say("Done.")]), client)
+
+    first = await run_graph_turn(
+        graph, thread_id="t1", user_text="Refund R$ 100 of the second charge"
+    )
+    assert first.stop_reason == "needs_confirmation"
+    assert "R$ 100.00" in first.answer
+    assert TX_DUPLICATE_B in first.answer
+    assert count(session.conn, "refund_requests") == 0
+    assert [e["type"] for e in first.trace] == ["turn_start", "llm_response", "turn_end"]
+
+    second = await run_graph_turn(graph, thread_id="t1", user_text="Yes, confirmed.")
+    assert second.stop_reason == "final_answer"
+    assert count(session.conn, "refund_requests") == 1
+    assert [e["type"] for e in second.trace] == [
+        "turn_start",
+        "confirmation",
+        "tool_result",
+        "llm_response",
+        "turn_end",
+    ]
+
+
+async def test_declined_action_is_not_executed(client, session):
+    llm = ScriptedLLM([REFUND, say("Ok, cancelled.")])
+    graph = await build(llm, client)
+    await run_graph_turn(graph, thread_id="t1", user_text="Refund R$ 100 of the second charge")
+    await run_graph_turn(graph, thread_id="t1", user_text="No, cancel it")
+    assert count(session.conn, "refund_requests") == 0
+    tool_message = llm.calls[1][-1]
+    assert tool_message.is_error
+    assert "did not confirm" in tool_message.content
+
+
+async def test_confirmation_question_follows_customer_language(client):
+    graph = await build(ScriptedLLM([REFUND]), client)
+    result = await run_graph_turn(
+        graph,
+        thread_id="t1",
+        user_text="Quero reembolso de R$ 100 da segunda cobrança, você pode fazer?",
+    )
+    assert "R$ 100,00" in result.answer
+    assert "sim" in result.answer

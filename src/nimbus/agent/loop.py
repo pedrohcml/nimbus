@@ -9,7 +9,7 @@ from nimbus.agent.llm import LLM
 from nimbus.agent.tools import Tools
 from nimbus.agent.types import Message, ToolCall
 
-StopReason = Literal["final_answer", "max_steps"]
+StopReason = Literal["final_answer", "max_steps", "needs_confirmation"]
 
 logger = logging.getLogger(__name__)
 
