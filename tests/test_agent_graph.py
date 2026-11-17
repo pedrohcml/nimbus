@@ -1,9 +1,10 @@
+import json
+
 import pytest
 
 from nimbus.agent.confirmation import format_amount, is_confirmation
-from nimbus.agent.graph import build_agent_graph, run_graph_turn
+from nimbus.agent.graph import FALLBACK_ANSWER, build_agent_graph, run_graph_turn
 from nimbus.agent.llm import ScriptedLLM
-from nimbus.agent.loop import FALLBACK_ANSWER
 from nimbus.agent.tools import McpTools
 from nimbus.agent.types import (
     LLMResponse,
@@ -12,9 +13,37 @@ from nimbus.agent.types import (
     message_from_dict,
     message_to_dict,
 )
-from nimbus.backend.seed import TX_DUPLICATE_B, TX_WITHDRAWAL_CONFIRMING
+from nimbus.backend.seed import (
+    TX_DUPLICATE_A,
+    TX_DUPLICATE_B,
+    TX_OTHER_CUSTOMER,
+    TX_WITHDRAWAL_CONFIRMING,
+)
 
 pytestmark = pytest.mark.anyio
+
+
+class FlakyLLM:
+    def __init__(self, responses):
+        self.inner = ScriptedLLM(responses)
+        self.failed = False
+
+    async def complete(self, messages, tools):
+        if not self.failed:
+            self.failed = True
+            raise RuntimeError("provider down")
+        return await self.inner.complete(messages, tools)
+
+
+class ExplodingTools:
+    def __init__(self, inner):
+        self._inner = inner
+
+    async def specs(self):
+        return await self._inner.specs()
+
+    async def call(self, name, arguments):
+        raise RuntimeError("connection to /var/run/mcp.sock lost")
 
 
 def say(text):
@@ -33,9 +62,12 @@ def count(conn, table):
     return conn.execute(f"select count(*) from {table}").fetchone()[0]
 
 
-async def build(llm, client, max_steps=6):
+async def build(llm, client, max_steps=6, tools=None):
     return await build_agent_graph(
-        llm=llm, tools=McpTools(client), system_prompt=lambda: "sys", max_steps=max_steps
+        llm=llm,
+        tools=tools or McpTools(client),
+        system_prompt=lambda: "sys",
+        max_steps=max_steps,
     )
 
 
@@ -83,6 +115,7 @@ async def test_stops_at_max_steps(client):
     assert result.stop_reason == "max_steps"
     assert result.answer == FALLBACK_ANSWER
     assert len(llm.calls) == 2
+    assert result.trace[-1]["stop_reason"] == "max_steps"
 
 
 async def test_trace_records_turn_in_order(client):
@@ -172,6 +205,10 @@ async def test_refund_waits_for_confirmation(client, session):
         "turn_end",
     ]
 
+    timestamps = [e["ts"] for e in second.trace]
+    assert timestamps == sorted(timestamps)
+    assert second.trace[0]["step"] == second.trace[1]["step"]
+
 
 async def test_declined_action_is_not_executed(client, session):
     llm = ScriptedLLM([REFUND, say("Ok, cancelled.")])
@@ -193,3 +230,93 @@ async def test_confirmation_question_follows_customer_language(client):
     )
     assert "R$ 100,00" in result.answer
     assert "sim" in result.answer
+
+
+async def test_model_receives_user_message_and_tools(client):
+    llm = ScriptedLLM([say("ok")])
+    graph = await build(llm, client)
+    await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    assert llm.calls[0][-1].content == "hi"
+    assert "get_transaction" in {spec.name for spec in llm.tools_seen[0]}
+
+
+async def test_tool_error_fed_back_and_marked_in_trace(client):
+    llm = ScriptedLLM(
+        [use(call("get_transaction", transaction_id=TX_OTHER_CUSTOMER)), say("Not found.")]
+    )
+    graph = await build(llm, client)
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    tool_message = llm.calls[1][-1]
+    assert tool_message.is_error
+    assert "not found" in tool_message.content
+    assert result.stop_reason == "final_answer"
+    tool_event = next(e for e in result.trace if e["type"] == "tool_result")
+    assert tool_event["is_error"] is True
+
+
+async def test_unknown_tool_reported_without_calling_server(client):
+    llm = ScriptedLLM([use(call("delete_account")), say("I can't do that.")])
+    graph = await build(llm, client)
+    await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    tool_message = llm.calls[1][-1]
+    assert tool_message.is_error
+    assert "delete_account" in tool_message.content
+    assert "get_transaction" in tool_message.content
+
+
+async def test_crashing_tool_doesnt_leak_internal_details(client):
+    llm = ScriptedLLM(
+        [use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING)), say("Sorry.")]
+    )
+    graph = await build(llm, client, tools=ExplodingTools(McpTools(client)))
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    tool_message = llm.calls[1][-1]
+    assert tool_message.is_error
+    assert "mcp.sock" not in tool_message.content
+    assert result.stop_reason == "final_answer"
+
+
+async def test_multiple_tool_calls_run_in_order(client):
+    llm = ScriptedLLM(
+        [
+            use(
+                call("get_transaction", "c1", transaction_id=TX_DUPLICATE_A),
+                call("get_transaction", "c2", transaction_id=TX_DUPLICATE_B),
+            ),
+            say("You were charged twice."),
+        ]
+    )
+    graph = await build(llm, client)
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    tool_messages = [m for m in llm.calls[1] if m.role == "tool"]
+    assert [m.tool_call_id for m in tool_messages] == ["c1", "c2"]
+    assert result.steps == 2
+
+
+async def test_trace_is_json_serializable(client):
+    llm = ScriptedLLM(
+        [use(call("get_transaction", transaction_id=TX_WITHDRAWAL_CONFIRMING)), say("Done.")]
+    )
+    graph = await build(llm, client)
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    json.dumps(result.trace)
+
+
+async def test_trace_keeps_model_reasoning(client):
+    llm = ScriptedLLM([LLMResponse(text="Hi!", reasoning="Greeting, no tool needed.")])
+    graph = await build(llm, client)
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi")
+    event = next(e for e in result.trace if e["type"] == "llm_response")
+    assert event["reasoning"] == "Greeting, no tool needed."
+    assert "no tool needed" not in result.answer
+
+
+async def test_turn_after_provider_failure_starts_fresh(client):
+    llm = FlakyLLM([say("Hello!")])
+    graph = await build(llm, client)
+    with pytest.raises(RuntimeError):
+        await run_graph_turn(graph, thread_id="t1", user_text="hi")
+
+    result = await run_graph_turn(graph, thread_id="t1", user_text="hi again")
+    assert result.stop_reason == "final_answer"
+    assert llm.inner.calls[0][-1].content == "hi again"

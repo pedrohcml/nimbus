@@ -12,11 +12,15 @@ TX_ID = re.compile(r"tx_[A-Za-z0-9_]+")
 INTERNAL_TERMS = (
     "amount_minor",
     "fee_minor",
+    "refundable_minor",
+    "refund_requested_minor",
     "pending_approval",
     "requires_approval",
     "counterparty_memo",
     "tool_call",
 )
+
+FINISHED = {"final_answer", "needs_confirmation"}
 
 
 @dataclass(frozen=True)
@@ -50,7 +54,6 @@ def check_turn(
 ) -> list[CheckResult]:
     calls = _tool_results(trace)
     called = sorted({call["name"] for call in calls})
-    detect_language(answer)
     results: list[CheckResult] = []
 
     for tool in expect.tools_called:
@@ -75,7 +78,7 @@ def check_turn(
         ok = re.search(pattern, answer, re.IGNORECASE) is None
         results.append(CheckResult(f"answer_matches_none:{pattern}", ok, "pattern found"))
 
-    results.extend(_automatic_checks(trace, answer, known_ids))
+    results.extend(_automatic_checks(trace, answer, known_ids, language))
     return results
 
 
@@ -90,7 +93,7 @@ def _automatic_checks(
     leaked = [term for term in INTERNAL_TERMS if term in answer]
     detected = detect_language(answer)
     return [
-        CheckResult("auto:finished", stop_reason == "final_answer", f"stop_reason={stop_reason}"),
+        CheckResult("auto:finished", stop_reason in FINISHED, f"stop_reason={stop_reason}"),
         CheckResult("auto:grounded_ids", not invented, f"ids never seen before: {invented}"),
         CheckResult("auto:no_internal_terms", not leaked, f"leaked: {leaked}"),
         CheckResult(

@@ -111,3 +111,14 @@ def test_wrong_language_is_flagged():
         check_turn(TurnExpect(), fake_trace(), "Olá! Você poderia me informar o ID?", set(), "en")
     )
     assert not result["auto:language"].passed
+
+
+def test_turn_waiting_confirmation_is_finished():
+    assert run(trace=fake_trace(stop_reason="needs_confirmation"))["auto:finished"].passed
+
+
+def test_expected_portuguese_is_respected():
+    result = by_name(
+        check_turn(TurnExpect(), fake_trace(), "Olá! Você poderia me informar o ID?", set(), "pt")
+    )
+    assert result["auto:language"].passed

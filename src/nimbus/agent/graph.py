@@ -1,9 +1,11 @@
+import logging
 import operator
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict
-from typing import Annotated, Any, TypedDict
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
@@ -13,14 +15,32 @@ from langgraph.types import Command, interrupt
 from nimbus.agent.confirmation import SENSITIVE_TOOLS, confirmation_question, is_confirmation
 from nimbus.agent.language import detect_language
 from nimbus.agent.llm import LLM
-from nimbus.agent.loop import FALLBACK_ANSWER, AgentResult, _elapsed_ms, _event, _execute
 from nimbus.agent.tools import Tools
-from nimbus.agent.types import Message, message_from_dict, message_to_dict
+from nimbus.agent.types import Message, ToolCall, message_from_dict, message_to_dict
+
+StopReason = Literal["final_answer", "max_steps", "needs_verification"]
+
+logger = logging.getLogger(__name__)
+
+FALLBACK_ANSWER = (
+    "Sorry, I could not finish handling your request. "
+    "I can hand this conversation over to a human agent."
+)
 
 DECLINED = (
-    "The customer did not confirm this action, so it was not executed. "
-    "Their reply was: {reply!r}. Do not retry unless they ask again."
+    "Not executed. Before running this action, the system asked the customer to confirm it, "
+    "and the customer did not confirm. Their reply was: {reply!r}. "
+    "Tell them the action was cancelled. Do not call it again unless they ask again."
 )
+
+
+@dataclass(frozen=True)
+class AgentResult:
+    answer: str
+    messages: list[Message]
+    stop_reason: StopReason
+    steps: int
+    trace: list[dict[str, Any]]
 
 
 class AgentState(TypedDict):
@@ -165,12 +185,15 @@ async def run_graph_turn(graph, *, thread_id: str, user_text: str) -> AgentResul
     config = {"configurable": {"thread_id": thread_id}}
     user = Message(role="user", content=user_text)
     snapshot = await graph.aget_state(config)
+    paused = any(task.interrupts for task in snapshot.tasks)
 
-    if snapshot.next:
+    if paused:
         turn_id = snapshot.values["turn_id"]
         before = len(snapshot.values["trace"])
+        start = _event(
+            turn_id, snapshot.values["steps"], "turn_start", user_text=user_text, resumed=True
+        )
         state = await graph.ainvoke(Command(resume=user_text), config)
-        start = _event(turn_id, state["steps"], "turn_start", user_text=user_text, resumed=True)
         trace = [start] + state["trace"][before:]
     else:
         turn_id = uuid.uuid4().hex[:12]
@@ -203,3 +226,28 @@ async def run_graph_turn(graph, *, thread_id: str, user_text: str) -> AgentResul
 
     end = trace[-1]
     return AgentResult(end["answer"], messages, end["stop_reason"], end["steps"], trace)
+
+
+async def _execute(tools: Tools, tool_names: set[str], call: ToolCall) -> tuple[str, bool]:
+    if call.name not in tool_names:
+        available = ", ".join(sorted(tool_names))
+        return f"Unknown tool '{call.name}'. Available tools: {available}.", True
+    try:
+        return await tools.call(call.name, call.arguments)
+    except Exception:
+        logger.exception("tool %s failed", call.name)
+        return "The tool failed unexpectedly. Do not retry it. Offer to escalate.", True
+
+
+def _event(turn_id: str, step: int, event_type: str, **data: Any) -> dict[str, Any]:
+    return {
+        "ts": datetime.now(UTC).isoformat(),
+        "turn_id": turn_id,
+        "step": step,
+        "type": event_type,
+        **data,
+    }
+
+
+def _elapsed_ms(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000, 1)

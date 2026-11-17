@@ -45,10 +45,8 @@ async def test_failing_run_reports_failed_check():
 
 async def test_each_run_gets_fresh_database():
     dispute = case(
-        Turn(
-            user=f"Open dispute for {TX_DUPLICATE_B}",
-            expect=TurnExpect(tools_called=["open_dispute"]),
-        ),
+        Turn(user=f"Open dispute for {TX_DUPLICATE_B}"),
+        Turn(user="Yes, confirmed.", expect=TurnExpect(tools_called=["open_dispute"])),
         db=[DbCheck(query="select count(*) from disputes", equals=1)],
     )
 
@@ -80,7 +78,8 @@ async def test_history_passed_between_turns():
 
 async def test_approval_threshold_from_case_is_used():
     refund = case(
-        Turn(user=f"Total refind of {TX_DUPLICATE_B}"),
+        Turn(user=f"Total refund of {TX_DUPLICATE_B}"),
+        Turn(user="Yes, confirmed."),
         approval_threshold_minor=10_000,
         db=[
             DbCheck(
@@ -109,3 +108,24 @@ async def test_provider_failure_is_error_not_failure():
     result = await run_case(case(LOOKUP), BrokenLLM)
     assert result.status == "error"
     assert "rate limit exceeded" in result.error
+
+
+async def test_action_waits_for_confirmation_turn():
+    refund = case(
+        Turn(
+            user=f"Refund R$ 100 of {TX_DUPLICATE_B}",
+            expect=TurnExpect(tools_not_called=["request_refund"]),
+        ),
+        Turn(user="Yes, confirmed.", expect=TurnExpect(tools_called=["request_refund"])),
+        db=[DbCheck(query="select count(*) from refund_requests", equals=1)],
+    )
+
+    def script():
+        return ScriptedLLM(
+            [
+                use("request_refund", transaction_id=TX_DUPLICATE_B, amount_minor=10_000),
+                say("Done."),
+            ]
+        )
+
+    assert (await run_case(refund, script)).status == "passed"

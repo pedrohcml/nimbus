@@ -5,11 +5,10 @@ from typing import Any, Literal
 
 from mcp import Client
 
+from nimbus.agent.graph import build_agent_graph, run_graph_turn
 from nimbus.agent.llm import LLM
-from nimbus.agent.loop import run_turn
 from nimbus.agent.prompts import build_system_prompt
 from nimbus.agent.tools import McpTools
-from nimbus.agent.types import Message
 from nimbus.backend.db import connect_db, init_db
 from nimbus.backend.seed import BASE_TIME, seed_db
 from nimbus.evals.checks import CheckResult, check_db, check_turn, ids_in
@@ -87,18 +86,17 @@ async def run_case(
 
     try:
         async with Client(build_server(lambda: session, **options)) as client:
-            tools = McpTools(client)
-            history: list[Message] = []
+            graph = await build_agent_graph(
+                llm=llm,
+                tools=McpTools(client),
+                system_prompt=lambda: build_system_prompt(now),
+            )
             known_ids: set[str] = set()
 
             for turn in case.turns:
                 known_ids |= ids_in(turn.user)
-                agent = await run_turn(
-                    llm=llm,
-                    tools=tools,
-                    system_prompt=build_system_prompt(now),
-                    history=history,
-                    user_text=turn.user,
+                agent = await run_graph_turn(
+                    graph, thread_id=session.conversation_id, user_text=turn.user
                 )
                 for event in agent.trace:
                     if event["type"] == "tool_result":
@@ -113,7 +111,6 @@ async def run_case(
                         trace=agent.trace,
                     )
                 )
-                history = agent.messages[1:]
 
             result.db_checks = check_db(conn, case.db)
     except Exception as error:
