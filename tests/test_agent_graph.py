@@ -216,9 +216,10 @@ async def test_declined_action_is_not_executed(client, session):
     await run_graph_turn(graph, thread_id="t1", user_text="Refund R$ 100 of the second charge")
     await run_graph_turn(graph, thread_id="t1", user_text="No, cancel it")
     assert count(session.conn, "refund_requests") == 0
-    tool_message = llm.calls[1][-1]
-    assert tool_message.is_error
-    assert "did not confirm" in tool_message.content
+    sent = llm.calls[1]
+    assert sent[-2].role == "tool" and sent[-2].is_error
+    assert "did not confirm" in sent[-2].content
+    assert sent[-1].role == "user" and sent[-1].content == "No, cancel it"
 
 
 async def test_confirmation_question_follows_customer_language(client):
@@ -320,3 +321,14 @@ async def test_turn_after_provider_failure_starts_fresh(client):
     result = await run_graph_turn(graph, thread_id="t1", user_text="hi again")
     assert result.stop_reason == "final_answer"
     assert llm.inner.calls[0][-1].content == "hi again"
+
+
+async def test_reply_not_confirmation_reaches_model(client, session):
+    llm = ScriptedLLM([REFUND, say("Sure, which transaction?")])
+    graph = await build(llm, client)
+    await run_graph_turn(graph, thread_id="t1", user_text="Refund R$ 100 of the second charge")
+    await run_graph_turn(graph, thread_id="t1", user_text="Actually, open a dispute instead")
+    last = llm.calls[1][-1]
+    assert last.role == "user"
+    assert last.content == "Actually, open a dispute instead"
+    assert count(session.conn, "refund_requests") == 0

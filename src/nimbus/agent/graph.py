@@ -29,8 +29,8 @@ FALLBACK_ANSWER = (
 
 DECLINED = (
     "Not executed. Before running this action, the system asked the customer to confirm it, "
-    "and the customer did not confirm. Their reply was: {reply!r}. "
-    "Tell them the action was cancelled. Do not call it again unless they ask again."
+    "and they did not confirm. Their reply is teh next message: answer it. "
+    "Do not call this action again unless they ask for it again."
 )
 
 
@@ -84,11 +84,12 @@ async def build_agent_graph(
     async def run_tools(state: AgentState) -> dict[str, Any]:
         last = message_from_dict(state["messages"][-1])
         new_messages, events = [], []
+        declined = False
         for tool_call in last.tool_calls:
             started = time.perf_counter()
             if tool_call.name in SENSITIVE_TOOLS and not state.get("approved"):
-                text = DECLINED.format(reply=state.get("confirmation_reply", ""))
-                is_error = True
+                text, is_error = DECLINED, True
+                declined = True
             else:
                 text, is_error = await _execute(tools, tool_names, tool_call)
             events.append(
@@ -106,7 +107,15 @@ async def build_agent_graph(
             )
             reply = Message(role="tool", content=text, tool_call_id=tool_call.id, is_error=is_error)
             new_messages.append(message_to_dict(reply))
-        return {"messages": new_messages, "trace": events, "approved": None}
+        if declined and state.get("confirmation_reply"):
+            customer = Message(role="user", content=state["confirmation_reply"])
+            new_messages.append(message_to_dict(customer))
+        return {
+            "messages": new_messages,
+            "trace": events,
+            "approved": None,
+            "confirmation_reply": "",
+        }
 
     async def confirm(state: AgentState) -> dict[str, Any]:
         last = message_from_dict(state["messages"][-1])
