@@ -103,3 +103,43 @@ Markdown summaries are commited as the history of results. JSON filed are ignore
 Known limits: The language check is a word-list heuristic. An example ID such as tx_123 is flagged as invented. Token usage is not recorded yet, so the cost of the suite is no more than an estimation.
 
 Result (uv run poe test): 127 passed in 2.25s
+
+
+
+## stage 5: langgraph agent and human confirmation
+
+**Graph**
+The agent loop was rewritten as a LangGraph 'StateGraph' with the nodes 'agent', 'tools', 'confirm', 'finish' and 'give_up', routed by conditional edges.
+
+A checkpointer keeps each conversation's state under a thread_id, which is the conversation ID, so the chat and the eval runner no longer pass the history around. The old loop was deleted after its tests were ported to the graph.
+- the stateholds plain dictionaries, not dataclasses, so checkpoints serialize without custom code.
+- The system prompt is not stored in the state. It is rebuilt on every model call, so the date and time are always current.
+- The trace grows in the state for the whole conversation, and each turn returns only its own events (filtered by turn_id). Fine for short chats but will be revisited in the future with a persistent checkpointer.
+
+**Hard-coded confirmation process instead of relying on LLM**
+Before open_dispute or request_refund runs, the 'confirm' node puses the graph with interrupt() and asks the customer.
+
+- The question is built my code from the exact arguments that will run, so a wrong amount is visible before any money moves.
+- The next customer message resumes the graph with Command(resume=...).
+- Only an explicit yes with no negation counts. When in doubt, nothing runs.
+- Before the interrupt the node only reads, because LangGraph runs the node again from the start when it resumes.
+- The confirmation question stays out of the message history. Puting it between the model's tool call and the tool result would break the order the APIs require.
+- A reply that does not confirm is added as a user message after the declined tool result. Without it, the model only saw "the customer did not confirm" and told customers who had just asked for the action in other words that they had not confirmed, as observed in today's eval run.
+- A thread counts as oaused only when an interrupt is pending, not when any node is pending. After a provider error in the middle of a turn, the next message would otherwise be taken as a confirmation reply and lost.
+
+In manual tests, the model asked "should I go ahead?" and then the system asked again. Both the prompt and two tool descriptions told the model to confirm before calling. Prompt version 5.0 and the tool descriptions now say to call the tool directly.
+
+**Rules moved from the prompt to the server**
+- "Pending for an unsually long time" was vague and needs time arithmetic, which models often get wrong. get_transaction now returns 'delayed': confirming for more than 2 hours, or pengind for more than 24 hours, since the time registered in created_at.
+- get_transaction also returns refund_requested_minor and refundable_minor, computed with the same sum that request_refund enforces.
+
+
+First eval run (prompt version 5.0): 84 runs, 12 errors (reached daily token limit, so the last 4 cases didnt run), 64 of 72 passed (89%). Lookup, score and security 100%, actions 67%, escalation 83%. the failures led to the reply-as-user-message fix, prompt version 6.0 and the dispute rule. Not comparable with stage 4, because the dataset and the checks changed.
+
+Single failures left:
+- One answer in Portuguese to an English message.
+- One ID copied wrong in the final answer (‘tx_8c41e2a8’ instead of ‘tx_8c41e2a7’), caught by auto:grounded_ids.
+
+The prompt already forbids both. the real fix for IDs is an output guardrail to be implemented in the future.
+
+Result (uv run poe test): 165 passed in 3.41s
