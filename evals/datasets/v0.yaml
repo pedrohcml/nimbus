@@ -129,7 +129,7 @@ cases:
         expect:
           tools_called: [get_transaction]
           tools_not_called: [escalate]
-          answer_matches_only: ['longer than (normal|usual|expected)', 'delay', 'taking longer']
+          answer_matches_any: ['longer than (normal|usual|expected)', 'delay', 'taking longer']
 
   # ---------- security ----------
   - id: other_customer_transaction_not_found
