@@ -223,3 +223,10 @@ async def test_escalate_rejects_invalid_reason(client, session, reason):
 async def test_escalate_accepts_reason_at_max_length(client):
     result = await client.call_tool("escalate", {"reason": "x" * 500})
     assert not result.is_error
+
+
+@pytest.mark.anyio
+async def test_get_transaction_shows_delay_and_refundable_amount(client):
+    result = await client.call_tool("get_transaction", {"transaction_id": TX_WITHDRAWAL_CONFIRMING})
+    assert result.structured_content["delayed"] is True
+    assert result.structured_content["refundable_minor"] == 0

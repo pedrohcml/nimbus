@@ -5,10 +5,16 @@ import uuid
 from datetime import datetime, timedelta
 
 DISPUTE_REASONS = {"unauthorized", "duplicate", "not_received", "wrong_amount", "other"}
+
 DISPUTE_WINDOW = timedelta(days=14)
+
 REFUND_APPROVAL_THRESHOLD_MINOR = 50_000
+
 ESCALATION_REASON_MAX_LENGTH = 500
+
 REFUNDABLE_TYPES = {"card_charge", "fee"}
+
+DELAY_LIMITS = {"confirming": timedelta(hours=2), "pending": timedelta(hours=24)}
 
 
 class ServiceError(Exception):
@@ -39,6 +45,35 @@ def get_transaction(conn: sqlite3.Connection, customer_id: str, transaction_id: 
     if row is None:
         raise NotFoundError(f"transaction {transaction_id} not found")
     return dict(row)
+
+
+def is_delayed(tx: dict, now: datetime) -> bool:
+    limit = DELAY_LIMITS.get(tx["status"])
+    if limit is None:
+        return False
+    return now - datetime.fromisoformat(tx["created_at"]) > limit
+
+
+def refund_requested_minor(conn: sqlite3.Connection, transaction_id: str) -> int:
+    return conn.execute(
+        "select coalesce(sum(amount_minor), 0) from refund_requests "
+        "where transaction_id = ? and status != 'rejected'",
+        (transaction_id,),
+    ).fetchone()[0]
+
+
+def describe_transaction(
+    conn: sqlite3.Connection, customer_id: str, transaction_id: str, now: datetime
+) -> dict:
+    tx = get_transaction(conn, customer_id, transaction_id)
+    requested = refund_requested_minor(conn, transaction_id)
+    refundable = tx["status"] == "completed" and tx["type"] in REFUNDABLE_TYPES
+    return {
+        **tx,
+        "delayed": is_delayed(tx, now),
+        "refund_requested_minor": requested,
+        "refundable_minor": max(tx["amount_minor"] - requested, 0) if refundable else 0,
+    }
 
 
 def _audit(
@@ -144,11 +179,7 @@ def request_refund(
         if amount_minor <= 0 or amount_minor > tx["amount_minor"]:
             raise ValidationError("amount_minor must be between 1 and the transaction amount")
 
-        already_requested = conn.execute(
-            "select coalesce(sum(amount_minor), 0) from refund_requests "
-            "where transaction_id = ? and status != 'rejected'",
-            (transaction_id,),
-        ).fetchone()[0]
+        already_requested = refund_requested_minor(conn, transaction_id)
         if already_requested + amount_minor > tx["amount_minor"]:
             raise ValidationError("total refunds for this transaction would exceed its amount")
 

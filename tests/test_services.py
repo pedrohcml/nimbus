@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -17,13 +17,19 @@ from nimbus.backend.services import (
     NotFoundError,
     ServiceError,
     ValidationError,
+    describe_transaction,
     escalate,
     get_transaction,
+    is_delayed,
     open_dispute,
     request_refund,
 )
 
 NOW = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
+
+
+def fake_tx(status, age):
+    return {"status": status, "created_at": (NOW - age).isoformat()}
 
 
 @pytest.fixture
@@ -237,3 +243,34 @@ def test_split_refunds_still_need_approval(conn):
 )
 def test_service_errors_share_base_class(error):
     assert issubclass(error, ServiceError)
+
+
+@pytest.mark.parametrize(
+    ("status", "age", "expected"),
+    [
+        ("confirming", timedelta(hours=2), False),
+        ("confirming", timedelta(hours=2, minutes=1), True),
+        ("pending", timedelta(hours=24), False),
+        ("pending", timedelta(hours=25), True),
+        ("completed", timedelta(days=30), False),
+    ],
+)
+def test_is_delayed(status, age, expected):
+    assert is_delayed(fake_tx(status, age), NOW) is expected
+
+
+def test_describe_transaction_flags_stuck_withdrawal(conn):
+    view = describe_transaction(conn, CUSTOMER_MAIN, TX_WITHDRAWAL_CONFIRMING, NOW)
+    assert view["delayed"] is True
+    assert view["refundable_minor"] == 0
+
+
+def test_refundable_amount_drops_after_refund(conn):
+    before = describe_transaction(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, NOW)
+    assert before["refundable_minor"] == 34_900
+
+    request_refund(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, 10_000, idempotency_key="k1", now=NOW)
+
+    after = describe_transaction(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, NOW)
+    assert after["refund_requested_minor"] == 10_000
+    assert after["refundable_minor"] == 24_900
