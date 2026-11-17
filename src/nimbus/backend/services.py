@@ -18,7 +18,7 @@ DELAY_LIMITS = {"confirming": timedelta(hours=2), "pending": timedelta(hours=24)
 
 
 class ServiceError(Exception):
-    """Base error. agent safe"""
+    """base error. agent safe"""
 
 
 class NotFoundError(ServiceError):
@@ -35,6 +35,10 @@ class DisputeAlreadyExistsError(ServiceError):
 
 class IdempotencyConflictError(ServiceError):
     """same idempotency key was reused w different arguments"""
+
+
+class DisputeOpenError(ServiceError):
+    """dispute on this transaction still being reviewed"""
 
 
 def get_transaction(conn: sqlite3.Connection, customer_id: str, transaction_id: str) -> dict:
@@ -62,15 +66,25 @@ def refund_requested_minor(conn: sqlite3.Connection, transaction_id: str) -> int
     ).fetchone()[0]
 
 
+def has_active_dispute(conn: sqlite3.Connection, transaction_id: str) -> bool:
+    row = conn.execute(
+        "select 1 from disputes where transaction_id = ? and status in ('open', 'under_review')",
+        (transaction_id,),
+    ).fetchone()
+    return row is not None
+
+
 def describe_transaction(
     conn: sqlite3.Connection, customer_id: str, transaction_id: str, now: datetime
 ) -> dict:
     tx = get_transaction(conn, customer_id, transaction_id)
     requested = refund_requested_minor(conn, transaction_id)
-    refundable = tx["status"] == "completed" and tx["type"] in REFUNDABLE_TYPES
+    dispute_open = has_active_dispute(conn, transaction_id)
+    refundable = tx["status"] == "completed" and tx["type"] in REFUNDABLE_TYPES and not dispute_open
     return {
         **tx,
         "delayed": is_delayed(tx, now),
+        "dispute_open": dispute_open,
         "refund_requested_minor": requested,
         "refundable_minor": max(tx["amount_minor"] - requested, 0) if refundable else 0,
     }
@@ -176,6 +190,10 @@ def request_refund(
             raise ValidationError(f"transaction is {tx['status']}, only completed can be refunded")
         if tx["type"] not in REFUNDABLE_TYPES:
             raise ValidationError(f"{tx['type']} transactions cannot be refunded")
+        if has_active_dispute(conn, transaction_id):
+            raise DisputeOpenError(
+                "a dispute is open for this transaction; its outcome will decide any refund"
+            )
         if amount_minor <= 0 or amount_minor > tx["amount_minor"]:
             raise ValidationError("amount_minor must be between 1 and the transaction amount")
 

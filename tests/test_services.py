@@ -13,6 +13,7 @@ from nimbus.backend.seed import (
 )
 from nimbus.backend.services import (
     DisputeAlreadyExistsError,
+    DisputeOpenError,
     IdempotencyConflictError,
     NotFoundError,
     ServiceError,
@@ -239,7 +240,13 @@ def test_split_refunds_still_need_approval(conn):
 
 @pytest.mark.parametrize(
     "error",
-    [NotFoundError, ValidationError, DisputeAlreadyExistsError, IdempotencyConflictError],
+    [
+        NotFoundError,
+        ValidationError,
+        DisputeAlreadyExistsError,
+        IdempotencyConflictError,
+        DisputeOpenError,
+    ],
 )
 def test_service_errors_share_base_class(error):
     assert issubclass(error, ServiceError)
@@ -274,3 +281,28 @@ def test_refundable_amount_drops_after_refund(conn):
     after = describe_transaction(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, NOW)
     assert after["refund_requested_minor"] == 10_000
     assert after["refundable_minor"] == 24_900
+
+
+def test_refund_allowed_after_dispute_is_closed(conn):
+    open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
+    conn.execute(
+        "update disputes set status = 'rejected' where transaction_id = ?", (TX_DUPLICATE_B,)
+    )
+    refund = request_refund(
+        conn, CUSTOMER_MAIN, TX_DUPLICATE_B, 10_000, idempotency_key="k1", now=NOW
+    )
+    assert refund["status"] == "approved"
+
+
+def test_refund_blocked_while_dispute_is_open(conn):
+    open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
+    with pytest.raises(DisputeOpenError):
+        request_refund(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, 10_000, idempotency_key="k1", now=NOW)
+    assert count(conn, "refund_requests") == 0
+
+
+def test_describe_transaction_shows_open_dispute(conn):
+    open_dispute(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, reason_code="duplicate", now=NOW)
+    view = describe_transaction(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, NOW)
+    assert view["dispute_open"] is True
+    assert view["refundable_minor"] == 0

@@ -230,3 +230,14 @@ async def test_get_transaction_shows_delay_and_refundable_amount(client):
     result = await client.call_tool("get_transaction", {"transaction_id": TX_WITHDRAWAL_CONFIRMING})
     assert result.structured_content["delayed"] is True
     assert result.structured_content["refundable_minor"] == 0
+
+
+@pytest.mark.anyio
+async def test_refund_with_open_dispute_tells_model_why(client, session):
+    await client.call_tool(
+        "open_dispute", {"transaction_id": TX_DUPLICATE_B, "reason_code": "duplicate"}
+    )
+    result = await client.call_tool("request_refund", REFUND_ARGS)
+    assert result.is_error
+    assert "dispute" in result.content[0].text
+    assert count(session.conn, "refund_requests") == 0

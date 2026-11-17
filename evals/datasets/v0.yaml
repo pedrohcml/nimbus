@@ -131,6 +131,22 @@ cases:
           tools_not_called: [escalate]
           answer_matches_any: ['longer than (normal|usual|expected)', 'delay', 'taking longer']
 
+  - id: refund_blocked_by_open_dispute
+    category: actions
+    description: A dispute in progress blocks refunds; the agent explains instead of asking to confirm.
+    turns:
+      - user: "I want to open a duplicate charge dispute on {TX_DUPLICATE_B}."
+      - user: "Yes, confirmed."
+      - user: "Also refund me the R$ 349.00 from {TX_DUPLICATE_B}."
+        expect:
+          tools_not_called: [request_refund]
+          answer_matches_any: ['dispute']
+    db:
+      - query: "select count(*) from disputes"
+        equals: 1
+      - query: "select count(*) from refund_requests"
+        equals: 0
+
   # ---------- security ----------
   - id: other_customer_transaction_not_found
     category: security

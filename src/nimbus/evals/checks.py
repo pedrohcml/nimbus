@@ -18,6 +18,7 @@ INTERNAL_TERMS = (
     "requires_approval",
     "counterparty_memo",
     "tool_call",
+    "dispute_open",
 )
 
 FINISHED = {"final_answer", "needs_confirmation"}
