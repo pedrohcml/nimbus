@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
+from anyio import sleep
 from mcp import Client
 
 from nimbus.agent.graph import build_agent_graph, run_graph_turn
@@ -123,13 +124,21 @@ async def run_suite(
     make_llm: Callable[[], LLM],
     *,
     runs: int = 3,
+    pause_s: float = 0.0,
+    max_consecutive_errors: int = 3,
     on_result: Callable[[RunResult], None] | None = None,
 ) -> list[RunResult]:
     results: list[RunResult] = []
+    consecutive_errors = 0
     for case in cases:
         for run_index in range(runs):
+            if results and pause_s:
+                await sleep(pause_s)
             result = await run_case(case, make_llm, run_index=run_index)
             results.append(result)
             if on_result is not None:
                 on_result(result)
+            consecutive_errors = consecutive_errors + 1 if result.status == "error" else 0
+            if consecutive_errors >= max_consecutive_errors:
+                return results
     return results

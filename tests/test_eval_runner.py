@@ -8,6 +8,16 @@ from nimbus.evals.runner import run_case, run_suite
 
 pytestmark = pytest.mark.anyio
 
+LOOKUP = Turn(
+    user=f"Status from {TX_WITHDRAWAL_CONFIRMING}?",
+    expect=TurnExpect(tools_called=["get_transaction"]),
+)
+
+
+class BrokenLLM:
+    async def complete(self, messages, tools):
+        raise RuntimeError("rate limit exceeded")
+
 
 def say(text):
     return LLMResponse(text=text)
@@ -21,10 +31,8 @@ def case(*turns, **fields):
     return EvalCase(id="case", category="lookup", turns=list(turns), **fields)
 
 
-LOOKUP = Turn(
-    user=f"Status from {TX_WITHDRAWAL_CONFIRMING}?",
-    expect=TurnExpect(tools_called=["get_transaction"]),
-)
+def many(n):
+    return [EvalCase(id=f"c{i}", category="lookup", turns=[LOOKUP]) for i in range(n)]
 
 
 async def test_passing_run():
@@ -126,3 +134,14 @@ async def test_action_waits_for_confirmation_turn():
         )
 
     assert (await run_case(refund, script)).status == "passed"
+
+
+async def test_suit_stops_after_consecutive_errors(monkeypatch):
+    pauses = []
+
+    async def fake_sleep(seconds):
+        pauses.append(seconds)
+
+    monkeypatch.setattr("nimbus.evals.runner.sleep", fake_sleep)
+    await run_suite(many(2), lambda: ScriptedLLM([say("Hi")]), runs=1, pause_s=1.5)
+    assert pauses == [1.5]

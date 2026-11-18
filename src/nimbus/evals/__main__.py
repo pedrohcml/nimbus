@@ -24,13 +24,13 @@ def _show(result: RunResult) -> None:
     print(line)
 
 
-async def _run(cases: list[EvalCase], model: str, runs: int) -> list[RunResult]:
-    client = AsyncGroq(api_key=groq_api_key())
+async def _run(cases: list[EvalCase], model: str, runs: int, pause_s: float) -> list[RunResult]:
+    client = AsyncGroq(api_key=groq_api_key(), max_retries=6)
 
     def make_llm() -> GroqLLM:
         return GroqLLM(client, model)
 
-    return await run_suite(cases, make_llm, runs=runs, on_result=_show)
+    return await run_suite(cases, make_llm, runs=runs, pause_s=pause_s, on_result=_show)
 
 
 def main() -> None:
@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--case", action="append", help="run only this case id (repeatable)")
     parser.add_argument("--category", action="append", help="run only this category (repeatable)")
     parser.add_argument("--out", default="evals/reports")
+    parser.add_argument("--pause", type=float, default=0.0, help="seconds to wait between runs")
     args = parser.parse_args()
 
     load_dotenv()
@@ -52,7 +53,7 @@ def main() -> None:
         raise SystemExit("No cases selected.")
 
     started = datetime.now(UTC)
-    results = anyio.run(_run, cases, agent_model(), args.runs)
+    results = anyio.run(_run, cases, agent_model(), args.runs, args.pause)
 
     meta = {
         "started_at": started.isoformat(timespec="seconds"),
@@ -66,6 +67,10 @@ def main() -> None:
     )
     rate = pass_rate(results)
     print(f"\nPass rate: {'n/a' if rate is None else f'{rate:.0%}'}. Report: {md_path}")
+    if len(results) < len(cases) * args.runs:
+        print(
+            f"Stopped early after repeated errors: {len(results)} of {len(cases) * args.runs} runs."
+        )
 
 
 if __name__ == "__main__":
