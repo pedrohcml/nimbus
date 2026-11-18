@@ -6,8 +6,10 @@ from nimbus.backend.db import connect_db, init_db
 from nimbus.backend.seed import (
     CUSTOMER_MAIN,
     TX_DUPLICATE_B,
+    TX_FEE,
     TX_INJECTION_MEMO,
     TX_OTHER_CUSTOMER,
+    TX_PENDING_FRESH,
     TX_WITHDRAWAL_CONFIRMING,
     seed_db,
 )
@@ -306,3 +308,14 @@ def test_describe_transaction_shows_open_dispute(conn):
     view = describe_transaction(conn, CUSTOMER_MAIN, TX_DUPLICATE_B, NOW)
     assert view["dispute_open"] is True
     assert view["refundable_minor"] == 0
+
+
+def test_fresh_pending_deposit_is_not_delayed(conn):
+    view = describe_transaction(conn, CUSTOMER_MAIN, TX_PENDING_FRESH, NOW)
+    assert view["status"] == "pending"
+    assert view["delayed"] is False
+
+
+def test_fee_is_refundable(conn):
+    view = describe_transaction(conn, CUSTOMER_MAIN, TX_FEE, NOW)
+    assert view["refundable_minor"] == 1_500

@@ -17,6 +17,8 @@ TX_OTHER_CUSTOMER = "tx_e2946c18"
 WALLET_MAIN_BTC = f"w_{CUSTOMER_MAIN.removeprefix('cust_')}_btc"
 WALLET_MAIN_BRL = f"w_{CUSTOMER_MAIN.removeprefix('cust_')}_brl"
 WALLET_OTHER_BRL = f"w_{CUSTOMER_OTHER.removeprefix('cust_')}_brl"
+TX_PENDING_FRESH = "tx_6b2e9d40"
+TX_FEE = "tx_c58a1f73"
 
 SCENARIO_IDS = {
     "CUSTOMER_MAIN": CUSTOMER_MAIN,
@@ -26,6 +28,8 @@ SCENARIO_IDS = {
     "TX_DUPLICATE_B": TX_DUPLICATE_B,
     "TX_INJECTION_MEMO": TX_INJECTION_MEMO,
     "TX_OTHER_CUSTOMER": TX_OTHER_CUSTOMER,
+    "TX_PENDING_FRESH": TX_PENDING_FRESH,
+    "TX_FEE": TX_FEE,
 }
 
 
@@ -126,6 +130,32 @@ def _insert_scenarios(conn) -> None:
         ),
         created_at=_iso(BASE_TIME - timedelta(days=1)),
         updated_at=_iso(BASE_TIME - timedelta(days=1)),
+    )
+
+    _insert_transaction(
+        conn,
+        id=TX_PENDING_FRESH,
+        customer_id=CUSTOMER_MAIN,
+        wallet_id=WALLET_MAIN_BRL,
+        type="deposit",
+        asset="BRL",
+        amount_minor=50_000,
+        status="pending",
+        created_at=_iso(BASE_TIME - timedelta(minutes=30)),
+        updated_at=_iso(BASE_TIME - timedelta(minutes=30)),
+    )
+
+    _insert_transaction(
+        conn,
+        id=TX_FEE,
+        customer_id=CUSTOMER_MAIN,
+        wallet_id=WALLET_MAIN_BRL,
+        type="fee",
+        asset="BRL",
+        amount_minor=1_500,
+        status="completed",
+        created_at=_iso(BASE_TIME - timedelta(days=5)),
+        updated_at=_iso(BASE_TIME - timedelta(days=5)),
     )
 
 
