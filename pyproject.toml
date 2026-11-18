@@ -12,6 +12,7 @@ dependencies = [
     "langgraph>=1.2.22",
     "mcp[cli]>=2",
     "python-dotenv>=1.2.4",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.scripts]
@@ -47,3 +48,4 @@ demo-db = "python -m nimbus.backend.seed --db data/nimbus.db"
 serve = "python -m nimbus.mcp_server.app"
 chat = "python -m nimbus.agent.chat"
 eval = "python -m nimbus.evals"
+rag-eval = "python -m nimbus.rag"

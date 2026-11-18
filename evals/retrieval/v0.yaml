@@ -1,0 +1,141 @@
+cases:
+  # ---------- refunds ----------
+  - id: refund_auto_limit
+    question: "Up to what amount is a refund approved without anyone reviewing it?"
+    policy: refunds
+    sections: [approval]
+
+  - id: refund_auto_limit_june_2025
+    question: "Up to what amount is a refund approved without anyone reviewing it?"
+    policy: refunds
+    sections: [approval]
+    version: 1
+    as_of: 2025-06-01
+
+  - id: refund_partial
+    question: "Can I get back only part of what I paid?"
+    policy: refunds
+    sections: [partial-refunds]
+
+  - id: refund_crypto
+    question: "Can a crypto withdrawal be refunded?"
+    policy: refunds
+    sections: [what-can-be-refunded]
+
+  - id: refund_arrival
+    question: "When will the refunded money show up on my card?"
+    policy: refunds
+    sections: [when-the-money-arrives]
+
+  - id: refund_during_dispute
+    question: "I already contested this charge. Can I also ask for my money back?"
+    policy: refunds
+    sections: [refunds-and-disputes]
+
+  # ---------- disputes ----------
+  - id: dispute_deadline
+    question: "How long does the team take to answer my case?"
+    policy: disputes
+    sections: [how-disputes-work]
+
+  - id: dispute_outcomes
+    question: "What can happen after the investigation ends?"
+    policy: disputes
+    sections: [possible-outcomes]
+
+  - id: dispute_when
+    question: "In which situations should I contest a charge?"
+    policy: disputes
+    sections: [when-to-open-a-dispute]
+
+  # ---------- fees ----------
+  - id: fee_miner_refund
+    question: "Will I get the miner fee back?"
+    policy: fees
+    sections: [bitcoin-withdrawals]
+
+  - id: fee_card_cost
+    question: "How much does it cost to get the card?"
+    policy: fees
+    sections: [card-fees]
+
+  - id: fee_brl_withdrawal
+    question: "Do I pay anything to take reais out of my account?"
+    policy: fees
+    sections: [deposits-and-withdrawals-in-reais]
+
+  # ---------- withdrawals ----------
+  - id: btc_confirmations
+    question: "How many confirmations does a bitcoin withdrawal need?"
+    policy: withdrawals
+    sections: [bitcoin-confirmations]
+
+  - id: withdrawal_stuck
+    question: "My withdrawal has been confirming for 5 hours, is that normal?"
+    policy: withdrawals
+    sections: [delays]
+
+  - id: withdrawal_stop
+    question: "Can I stop a withdrawal I already sent?"
+    policy: withdrawals
+    sections: [cancelling]
+
+  # ---------- account security ----------
+  - id: security_2fa_request
+    question: "Someone from Nimbus asked for my 2FA code, is that legit?"
+    policy: account_security
+    sections: [what-nimbus-never-asks-for]
+
+  - id: security_takeover
+    question: "I think somebody got into my account"
+    policy: account_security
+    sections: [suspected-account-takeover]
+
+  # ---------- portuguese ----------
+  - id: pt_refund_auto_limit
+    question: "Qual o valor máximo de reembolso aprovado automaticamente?"
+    policy: refunds
+    sections: [approval]
+    language: pt
+
+  - id: pt_refund_partial
+    question: "Posso pedir só uma parte do dinheiro de volta?"
+    policy: refunds
+    sections: [partial-refunds]
+    language: pt
+
+  - id: pt_refund_arrival
+    question: "Quando o dinheiro do reembolso cai no cartão?"
+    policy: refunds
+    sections: [when-the-money-arrives]
+    language: pt
+
+  - id: pt_dispute_deadline
+    question: "Quanto tempo a equipe leva para responder uma disputa?"
+    policy: disputes
+    sections: [how-disputes-work]
+    language: pt
+
+  - id: pt_fee_card_cost
+    question: "Quanto custa emitir o cartão?"
+    policy: fees
+    sections: [card-fees]
+    language: pt
+
+  - id: pt_fee_miner_refund
+    question: "A taxa da rede do bitcoin é devolvida?"
+    policy: fees
+    sections: [bitcoin-withdrawals]
+    language: pt
+
+  - id: pt_withdrawal_stuck
+    question: "Meu saque está confirmando há horas, isso é normal?"
+    policy: withdrawals
+    sections: [delays]
+    language: pt
+
+  - id: pt_security_takeover
+    question: "Acho que invadiram minha conta"
+    policy: account_security
+    sections: [suspected-account-takeover]
+    language: pt
