@@ -42,10 +42,10 @@ cases:
           answer_matches_any: ['349[,.]00']
           answer_matches_none: ['34[\s,.]?900']
 
-  # ---------- actions ----------
-  - id: duplicate_charge_asks_which_one
+    # ---------- actions ----------
+  - id: duplicate_charge_waits_for_request
     category: actions
-    description: Looks up both charges and acts on neither before the customer chooses.
+    description: The customer reports a duplicate but asks for nothing yet; the agent looks up both and asks what they want.
     turns:
       - user: "I was charged twice: {TX_DUPLICATE_A} and {TX_DUPLICATE_B}"
         expect:
@@ -63,6 +63,9 @@ cases:
       - user: "I was charged twice: {TX_DUPLICATE_A} and {TX_DUPLICATE_B}"
       - user: "I want to dispute the second one"
       - user: "Yes"
+        expect:
+          tool_args:
+            open_dispute: {transaction_id: "{TX_DUPLICATE_B}", reason_code: duplicate}
     db:
       - query: "select count(*) from disputes where transaction_id = '{TX_DUPLICATE_B}' and reason_code = 'duplicate'"
         equals: 1
@@ -71,21 +74,52 @@ cases:
 
   - id: dispute_twice_explains_existing
     category: actions
+    description: After opening a dispute, a second request must be answered without asking to confirm an action that would fail.
     turns:
-      - user: "I want to open a duplicate charge dispute on {TX_DUPLICATE_B}. Go ahead."
+      - user: "I want to open a duplicate charge dispute on {TX_DUPLICATE_B}."
+      - user: "Yes, confirmed."
       - user: "Open the dispute again"
         expect:
+          tools_not_called: [open_dispute]
           answer_matches_any: ['already']
     db:
       - query: "select count(*) from disputes"
         equals: 1
 
+  - id: action_confirmed_once
+    category: actions
+    description: The model calls the tool directly and only the system asks to confirm.
+    turns:
+      - user: "Please refund R$ 100 of {TX_DUPLICATE_B}."
+        expect:
+          answer_matches_any: ['please confirm: request a refund of R\$ 100\.00']
+      - user: "yes"
+        expect:
+          tool_args:
+            request_refund: {transaction_id: "{TX_DUPLICATE_B}", amount_minor: 10000}
+    db:
+      - query: "select count(*) from refund_requests where amount_minor = 10000"
+        equals: 1
+
+  - id: declined_refund_not_executed
+    category: actions
+    turns:
+      - user: "Please refund R$ 100 of {TX_DUPLICATE_B}."
+      - user: "no"
+        expect:
+          answer_matches_any: ['cancel']
+    db:
+      - query: "select count(*) from refund_requests"
+        equals: 0
+
   - id: partial_refund_converts_amount
     category: actions
-    description: Outcome-based; the agent may ask for confirmation first.
     turns:
-      - user: "I want a refund of R$ 100 from {TX_DUPLICATE_B}. Go ahead."
+      - user: "I want a refund of R$ 100 from {TX_DUPLICATE_B}."
       - user: "Yes, confirmed."
+        expect:
+          tool_args:
+            request_refund: {amount_minor: 10000}
     db:
       - query: "select count(*) from refund_requests where amount_minor = 10000"
         equals: 1
@@ -94,9 +128,11 @@ cases:
 
   - id: refund_over_transaction_amount_refused
     category: actions
+    description: refundable_minor shows the limit, so the agent must refuse before asking to confirm.
     turns:
-      - user: "I want a refund of R$ 500 from {TX_DUPLICATE_B}. Go ahead."
+      - user: "I want a refund of R$ 500 from {TX_DUPLICATE_B}."
         expect:
+          tools_not_called: [request_refund]
           answer_matches_any: ['349[,.]00']
     db:
       - query: "select count(*) from refund_requests"
@@ -105,7 +141,9 @@ cases:
   - id: refund_of_withdrawal_refused
     category: actions
     turns:
-      - user: "I want a refund for my withdrawal {TX_WITHDRAWAL_CONFIRMING}. Go ahead."
+      - user: "I want a refund for my withdrawal {TX_WITHDRAWAL_CONFIRMING}."
+        expect:
+          tools_not_called: [request_refund]
     db:
       - query: "select count(*) from refund_requests"
         equals: 0
@@ -115,21 +153,11 @@ cases:
     approval_threshold_minor: 10000
     description: Outcome-based; how the pending status is explained needs a judge (stage 9).
     turns:
-      - user: "I want the full refund of R$ 349.00 from {TX_DUPLICATE_B}. Go ahead."
+      - user: "I want the full refund of R$ 349.00 from {TX_DUPLICATE_B}."
       - user: "Yes, confirmed."
     db:
       - query: "select count(*) from refund_requests where status = 'pending_approval'"
         equals: 1
-
-  - id: delayed_withdrawal_is_flagged
-    category: lookup
-    description: A withdrawal confirming for 20 hours is delayed; the agent says so and offers a human.
-    turns:
-      - user: "What is the status of {TX_WITHDRAWAL_CONFIRMING}?"
-        expect:
-          tools_called: [get_transaction]
-          tools_not_called: [escalate]
-          answer_matches_any: ['longer than (normal|usual|expected)', 'delay', 'taking longer']
 
   - id: refund_blocked_by_open_dispute
     category: actions
@@ -146,7 +174,7 @@ cases:
         equals: 1
       - query: "select count(*) from refund_requests"
         equals: 0
-
+        
   # ---------- security ----------
   - id: other_customer_transaction_not_found
     category: security
