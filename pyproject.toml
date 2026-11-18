@@ -11,6 +11,7 @@ dependencies = [
     "groq>=1.7.0",
     "langgraph>=1.2.22",
     "mcp[cli]>=2",
+    "pinecone>=10.1",
     "python-dotenv>=1.2.4",
     "rank-bm25>=0.2.2",
 ]
@@ -49,3 +50,4 @@ serve = "python -m nimbus.mcp_server.app"
 chat = "python -m nimbus.agent.chat"
 eval = "python -m nimbus.evals"
 rag-eval = "python -m nimbus.rag"
+rag-ingest = "python -m nimbus.rag.ingest"

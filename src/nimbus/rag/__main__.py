@@ -2,19 +2,24 @@ import argparse
 from collections.abc import Callable
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from nimbus.rag.chunking import Chunk, chunk_all, chunk_by_section, chunk_by_window
 from nimbus.rag.corpus import load_policies
 from nimbus.rag.evaluation import KS, average, evaluate, load_retrieval_cases
+from nimbus.rag.pinecone_store import PineconeRetriever, open_index
 from nimbus.rag.retrieval import BM25Retriever, Retriever
 
 CHUNKERS = {"section": chunk_by_section, "window": chunk_by_window}
 RETRIEVERS: dict[str, Callable[[str, list[Chunk]], Retriever]] = {
-    "bm25": lambda chunking, chunks: BM25Retriever(chunks),
+    "bm25": lambda _chunking, chunks: BM25Retriever(chunks),
+    "pinecone": lambda chunking, chunks: PineconeRetriever(open_index(), chunking, chunks),
 }
 SUBSETS = ("all", "en", "pt")
 
 
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Measure policy retrieval.")
     parser.add_argument("--cases", default="evals/retrieval/v0.yaml")
     args = parser.parse_args()

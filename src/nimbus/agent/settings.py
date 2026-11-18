@@ -12,3 +12,10 @@ def groq_api_key() -> str:
     if not key:
         raise RuntimeError("GROQ_API_KEY is not set")
     return key
+
+
+def pinecone_api_key() -> str:
+    key = os.environ.get("PINECONE_API_KEY")
+    if not key:
+        raise RuntimeError("PINECONE_API_KEY is not set.Put it in .env.")
+    return key
