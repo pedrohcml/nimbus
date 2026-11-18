@@ -53,6 +53,10 @@ def is_confirmation(reply: str) -> bool:
     return bool(_YES.search(reply)) and not _NO.search(reply)
 
 
+def is_rejection(reply: str) -> bool:
+    return bool(_NO.search(reply))
+
+
 def format_amount(amount_minor: int, asset: str, language: str) -> str:
     decimals = _DECIMALS.get(asset, 2)
     value = Decimal(amount_minor).scaleb(-decimals)

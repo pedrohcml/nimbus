@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from nimbus.agent.confirmation import format_amount, is_confirmation
+from nimbus.agent.confirmation import format_amount, is_confirmation, is_rejection
 from nimbus.agent.graph import FALLBACK_ANSWER, build_agent_graph, run_graph_turn
 from nimbus.agent.llm import ScriptedLLM
 from nimbus.agent.tools import McpTools
@@ -166,6 +166,14 @@ def test_confirmations(reply):
 
 
 @pytest.mark.parametrize(
+    ("reply", "expected"),
+    [("no", True), ("Não, cancela", True), ("Actually, open a dispute", False)],
+)
+def test_rejections(reply, expected):
+    assert is_rejection(reply) is expected
+
+
+@pytest.mark.parametrize(
     "reply", ["no", "No, cancel it", "não", "wait, how much?", "yes... actualy no"]
 )
 def test_not_confirmations(reply):
@@ -218,7 +226,7 @@ async def test_declined_action_is_not_executed(client, session):
     assert count(session.conn, "refund_requests") == 0
     sent = llm.calls[1]
     assert sent[-2].role == "tool" and sent[-2].is_error
-    assert "did not confirm" in sent[-2].content
+    assert "cancelled" in sent[-2].content
     assert sent[-1].role == "user" and sent[-1].content == "No, cancel it"
 
 
@@ -332,3 +340,6 @@ async def test_reply_not_confirmation_reaches_model(client, session):
     assert last.role == "user"
     assert last.content == "Actually, open a dispute instead"
     assert count(session.conn, "refund_requests") == 0
+    tool_message = llm.calls[1][-2]
+    assert "Not executed" in tool_message.content
+    assert "cancelled" not in tool_message.content

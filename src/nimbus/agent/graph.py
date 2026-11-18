@@ -12,7 +12,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
-from nimbus.agent.confirmation import SENSITIVE_TOOLS, confirmation_question, is_confirmation
+from nimbus.agent.confirmation import (
+    SENSITIVE_TOOLS,
+    confirmation_question,
+    is_confirmation,
+    is_rejection,
+)
 from nimbus.agent.language import detect_language
 from nimbus.agent.llm import LLM
 from nimbus.agent.tools import Tools
@@ -27,10 +32,14 @@ FALLBACK_ANSWER = (
     "I can hand this conversation over to a human agent."
 )
 
-DECLINED = (
-    "Not executed. Before running this action, the system asked the customer to confirm it, "
-    "and they did not confirm. Their reply is teh next message: answer it. "
-    "Do not call this action again unless they ask for it again."
+CANCELLED = (
+    "Cancelled: the customer said no when the system asked them to confirm, "
+    "so this action was not executed. Tell them it was cancelled. "
+    "Do not ask again and do not call it again unless they ask for it again."
+)
+NOT_CONFIRMED = (
+    "Not executed: the customer replied without confirming. Their reply is the "
+    "next message: answer it. Call this action again only if they ask for it."
 )
 
 
@@ -88,7 +97,9 @@ async def build_agent_graph(
         for tool_call in last.tool_calls:
             started = time.perf_counter()
             if tool_call.name in SENSITIVE_TOOLS and not state.get("approved"):
-                text, is_error = DECLINED, True
+                reply_text = state.get("confirmation_reply", "")
+                text = CANCELLED if is_rejection(reply_text) else NOT_CONFIRMED
+                is_error = True
                 declined = True
             else:
                 text, is_error = await _execute(tools, tool_names, tool_call)
