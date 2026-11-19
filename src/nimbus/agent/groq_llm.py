@@ -80,12 +80,24 @@ def from_groq_message(message: Any) -> LLMResponse:
 
 
 class GroqLLM:
-    """LLM adapter for Groq's chat completions API"""
-
-    def __init__(self, client: AsyncGroq, model: str, reasoning_effort: str = "medium") -> None:
+    def __init__(
+        self,
+        client: AsyncGroq,
+        model: str,
+        reasoning_effort: str = "medium",
+        *,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        seed: int | None = None,
+    ) -> None:
         self._client = client
         self._model = model
         self._reasoning_effort = reasoning_effort
+        self._sampling = {
+            name: value
+            for name, value in {"temperature": temperature, "top_p": top_p, "seed": seed}.items()
+            if value is not None
+        }
 
     async def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         response = await self._client.chat.completions.create(
@@ -94,5 +106,6 @@ class GroqLLM:
             tools=to_groq_tools(tools),
             tool_choice="auto",
             reasoning_effort=self._reasoning_effort,
+            **self._sampling,
         )
         return from_groq_message(response.choices[0].message)

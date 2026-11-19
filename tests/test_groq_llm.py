@@ -1,7 +1,9 @@
 import json
 from types import SimpleNamespace
 
-from nimbus.agent.groq_llm import from_groq_message, to_groq_messages, to_groq_tools
+import pytest
+
+from nimbus.agent.groq_llm import GroqLLM, from_groq_message, to_groq_messages, to_groq_tools
 from nimbus.agent.types import Message, ToolCall, ToolSpec
 
 
@@ -74,3 +76,47 @@ def test_invalid_json_arguments_become_empty_dict():
         groq_message(tool_calls=[groq_tool_call("c1", "get_transaction", "{not json")])
     )
     assert response.tool_calls[0].arguments == {}
+
+
+class FakeGroqClient:
+    def __init__(self):
+        self.calls = []
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    async def _create(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(choices=[SimpleNamespace(message=groq_message(content="ok"))])
+
+
+HI = [Message(role="user", content="hi")]
+
+
+@pytest.mark.anyio
+async def test_sampling_parameters_reach_request():
+    client = FakeGroqClient()
+    await GroqLLM(client, "model", temperature=0.6, seed=7).complete(HI, [])
+    sent = client.calls[0]
+    assert sent["temperature"] == 0.6
+    assert sent["seed"] == 7
+    assert "top_p" not in sent
+
+
+@pytest.mark.anyio
+async def test_no_sampling_parameters_by_default():
+    client = FakeGroqClient()
+    await GroqLLM(client, "model").complete(HI, [])
+    sent = client.calls[0]
+    assert "temperature" not in sent
+    assert "seed" not in sent
+    assert "top_p" not in sent
+
+
+@pytest.mark.anyio
+async def test_request_keeps_tool_choice_and_reasoning_effort():
+    client = FakeGroqClient()
+    response = await GroqLLM(client, "model", "low").complete(HI, [])
+    sent = client.calls[0]
+    assert sent["tool_choice"] == "auto"
+    assert sent["reasoning_effort"] == "low"
+    assert sent["messages"] == [{"role": "user", "content": "hi"}]
+    assert response.text == "ok"

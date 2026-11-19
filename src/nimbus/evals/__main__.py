@@ -9,7 +9,7 @@ from groq import AsyncGroq
 
 from nimbus.agent.groq_llm import GroqLLM
 from nimbus.agent.prompts import build_system_prompt
-from nimbus.agent.settings import agent_model, groq_api_key
+from nimbus.agent.settings import agent_model, groq_api_key, sampling_options
 from nimbus.evals.dataset import EvalCase, load_dataset
 from nimbus.evals.report import pass_rate, write_report
 from nimbus.evals.runner import EVAL_NOW, RunResult, run_suite
@@ -28,7 +28,7 @@ async def _run(cases: list[EvalCase], model: str, runs: int, pause_s: float) -> 
     client = AsyncGroq(api_key=groq_api_key(), max_retries=6)
 
     def make_llm() -> GroqLLM:
-        return GroqLLM(client, model)
+        return GroqLLM(client, model, **sampling_options())
 
     return await run_suite(cases, make_llm, runs=runs, pause_s=pause_s, on_result=_show)
 

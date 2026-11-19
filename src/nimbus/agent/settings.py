@@ -19,3 +19,14 @@ def pinecone_api_key() -> str:
     if not key:
         raise RuntimeError("PINECONE_API_KEY is not set.Put it in .env.")
     return key
+
+
+def sampling_options() -> dict[str, float | int]:
+    options: dict[str, float | int] = {}
+    if value := os.environ.get("NIMBUS_TEMPERATURE"):
+        options["temperature"] = float(value)
+    if value := os.environ.get("NIMBUS_TOP_P"):
+        options["top_p"] = float(value)
+    if value := os.environ.get("NIMBUS_SEED"):
+        options["seed"] = float(value)
+    return options
