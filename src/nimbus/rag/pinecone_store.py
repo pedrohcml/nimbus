@@ -27,8 +27,12 @@ def to_document(chunk: Chunk) -> dict[str, Any]:
     }
 
 
+def open_client() -> Any:
+    return Pinecone(api_key=pinecone_api_key())
+
+
 def open_index(name: str = INDEX_NAME) -> Any:
-    return Pinecone(api_key=pinecone_api_key()).index(name=name)
+    return open_client().index(name=name)
 
 
 def ensure_index(name: str = INDEX_NAME) -> None:

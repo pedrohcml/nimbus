@@ -16,3 +16,4 @@ traces/
 .ruff_cache/
 data/*.db
 evals/reports/*.json
+.cache/

@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from nimbus.rag.chunking import Chunk, chunk_all, chunk_by_section, chunk_by_window
 from nimbus.rag.corpus import load_policies
 from nimbus.rag.evaluation import KS, average, load_retrieval_cases, score_case, search_all
-from nimbus.rag.pinecone_store import PineconeRetriever, open_index
+from nimbus.rag.pinecone_store import PineconeRetriever, open_client, open_index
+from nimbus.rag.rerank import CachedReranker, PineconeReranker, RerankingRetriever
 from nimbus.rag.retrieval import BM25Retriever, HybridRetriever, Retriever
 
 CHUNKERS = {"section": chunk_by_section, "window": chunk_by_window}
@@ -16,6 +17,10 @@ RETRIEVERS: dict[str, Callable[[str, list[Chunk]], Retriever]] = {
     "pinecone": lambda chunking, chunks: PineconeRetriever(open_index(), chunking, chunks),
     "hybrid": lambda chunking, chunks: HybridRetriever(
         [BM25Retriever(chunks), PineconeRetriever(open_index(), chunking, chunks)]
+    ),
+    "pinecone+rerank": lambda chunking, chunks: RerankingRetriever(
+        PineconeRetriever(open_index(), chunking, chunks),
+        CachedReranker(PineconeReranker(open_client())),
     ),
 }
 SUBSETS = ("all", "en", "pt")
@@ -28,6 +33,8 @@ def main() -> None:
     parser.add_argument(
         "--misses", action="store_true", help="list questions not answered at rank 1"
     )
+    parser.add_argument("--chunking", choices=list(CHUNKERS), action="append")
+    parser.add_argument("--retriever", choices=list(RETRIEVERS), action="append")
     args = parser.parse_args()
 
     cases = load_retrieval_cases(Path(args.cases))
@@ -37,10 +44,10 @@ def main() -> None:
     print("|---" * (3 + len(columns)) + "|")
 
     misses = []
-    for chunk_name, chunker in CHUNKERS.items():
-        chunks = chunk_all(docs, chunker)
-        for retriever_name, make_retriever in RETRIEVERS.items():
-            ranked_lists = search_all(make_retriever(chunk_name, chunks), cases)
+    for chunk_name in args.chunking or list(CHUNKERS):
+        chunks = chunk_all(docs, CHUNKERS[chunk_name])
+        for retriever_name in args.retriever or list(RETRIEVERS):
+            ranked_lists = search_all(RETRIEVERS[retriever_name](chunk_name, chunks), cases)
             per_case = [
                 score_case(ranked, case) for ranked, case in zip(ranked_lists, cases, strict=False)
             ]
