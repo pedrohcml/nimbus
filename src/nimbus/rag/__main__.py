@@ -8,12 +8,15 @@ from nimbus.rag.chunking import Chunk, chunk_all, chunk_by_section, chunk_by_win
 from nimbus.rag.corpus import load_policies
 from nimbus.rag.evaluation import KS, average, load_retrieval_cases, score_case, search_all
 from nimbus.rag.pinecone_store import PineconeRetriever, open_index
-from nimbus.rag.retrieval import BM25Retriever, Retriever
+from nimbus.rag.retrieval import BM25Retriever, HybridRetriever, Retriever
 
 CHUNKERS = {"section": chunk_by_section, "window": chunk_by_window}
 RETRIEVERS: dict[str, Callable[[str, list[Chunk]], Retriever]] = {
     "bm25": lambda _chunking, chunks: BM25Retriever(chunks),
     "pinecone": lambda chunking, chunks: PineconeRetriever(open_index(), chunking, chunks),
+    "hybrid": lambda chunking, chunks: HybridRetriever(
+        [BM25Retriever(chunks), PineconeRetriever(open_index(), chunking, chunks)]
+    ),
 }
 SUBSETS = ("all", "en", "pt")
 

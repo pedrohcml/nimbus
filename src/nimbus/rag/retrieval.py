@@ -10,10 +10,31 @@ from nimbus.rag.chunking import Chunk
 
 KEEP = {"not", "no", "nor", "never", "não", "nunca"}
 STOP_WORDS = frozenset(EN_STOP_WORDS | PT_STOP_WORDS) - KEEP
+RRF_K = 60
+HYBRID_DEPTH = 20
 
 
 class Retriever(Protocol):
     def search(self, query: str, k: int, on: date) -> list[Chunk]: ...
+
+
+class HybridRetriever:
+    def __init__(
+        self, retrievers: list[Retriever], depth: int = HYBRID_DEPTH, rrf_k: int = RRF_K
+    ) -> None:
+        self.retrievers = retrievers
+        self.depth = depth
+        self.rrf_k = rrf_k
+
+    def search(self, query: str, k: int, on: date) -> list[Chunk]:
+        scores: dict[str, float] = {}
+        chunks: dict[str, Chunk] = {}
+        for retriever in self.retrievers:
+            for rank, chunk in enumerate(retriever.search(query, self.depth, on), start=1):
+                scores[chunk.id] = scores.get(chunk.id, 0.0) + 1 / (self.rrf_k + rank)
+                chunks.setdefault(chunk.id, chunk)
+        ranked = sorted(chunks, key=lambda chunk_id: scores[chunk_id], reverse=True)
+        return [chunks[chunk_id] for chunk_id in ranked[:k]]
 
 
 def tokenize(text: str) -> list[str]:

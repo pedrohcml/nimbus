@@ -1,7 +1,7 @@
 from datetime import date
 
 from nimbus.rag.chunking import Chunk
-from nimbus.rag.retrieval import BM25Retriever, tokenize
+from nimbus.rag.retrieval import BM25Retriever, HybridRetriever, tokenize
 
 TODAY = date(2026, 1, 15)
 
@@ -32,6 +32,19 @@ CHUNKS = [
         effective_from=date(2025, 11, 1),
     ),
 ]
+
+
+class FixedRetriever:
+    def __init__(self, chunks):
+        self.chunks = chunks
+        self.asked_k = None
+
+    def search(self, query, k, on):
+        self.asked_k = k
+        return self.chunks[:k]
+
+
+A, B, C = (chunk(f"x#{name}", "x", name, name) for name in "abc")
 
 
 def test_tokenize_lowercases_and_splits_on_symbols():
@@ -73,3 +86,24 @@ def test_tokenize_keeps_negations():
 
 def test_no_shared_word_means_no_result():
     assert BM25Retriever(CHUNKS).search("adasd", k=3, on=TODAY) == []
+
+
+def test_rrf_rewards_chunks_found_by_both():
+    hybrid = HybridRetriever([FixedRetriever([A, B]), FixedRetriever([C, B])])
+    assert [c.id for c in hybrid.search("q", k=3, on=TODAY)] == ["x#b", "x#a", "x#c"]
+
+
+def test_empty_list_keeps_other_order():
+    hybrid = HybridRetriever([FixedRetriever([]), FixedRetriever([A, B])])
+    assert [c.id for c in hybrid.search("q", k=3, on=TODAY)] == ["x#a", "x#b"]
+
+
+def test_hybrid_returns_at_most_k():
+    hybrid = HybridRetriever([FixedRetriever([A, B]), FixedRetriever([C])])
+    assert len(hybrid.search("q", k=1, on=TODAY)) == 1
+
+
+def test_hybrid_asks_each_retriever_for_its_depth():
+    first, second = FixedRetriever([A]), FixedRetriever([B])
+    HybridRetriever([first, second], depth=20).search("q", k=5, on=TODAY)
+    assert first.asked_k == second.asked_k == 20
