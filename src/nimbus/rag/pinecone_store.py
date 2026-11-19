@@ -5,7 +5,8 @@ from typing import Any
 from pinecone import Pinecone, SchemaBuilder
 
 from nimbus.agent.settings import pinecone_api_key
-from nimbus.rag.chunking import Chunk
+from nimbus.rag.chunking import Chunk, chunk_all, chunk_by_section
+from nimbus.rag.corpus import load_policies
 from nimbus.rag.retrieval import current_versions
 
 INDEX_NAME = "nimbus-policies"
@@ -71,3 +72,8 @@ class PineconeRetriever:
             filter={"policy_version": {"$in": sorted(version_key(p, v) for p, v in allowed)}},
         )
         return [self.by_id[match.id] for match in response.matches if match.id in self.by_id]
+
+
+def policy_retriever() -> PineconeRetriever:
+    chunks = chunk_all(load_policies(), chunk_by_section)
+    return PineconeRetriever(open_index(), "section", chunks)

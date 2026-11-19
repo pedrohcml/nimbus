@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import get_args
 
 import pytest
@@ -15,8 +15,38 @@ from nimbus.backend.seed import (
 )
 from nimbus.mcp_server.server import DisputeReason, build_server
 from nimbus.mcp_server.session import Session
+from nimbus.rag.chunking import Chunk
+
+
+class FakeRetriever:
+    def __init__(self, chunks=(), error=None):
+        self.chunks = list(chunks)
+        self.error = error
+        self.calls = []
+
+    def search(self, query, k, on):
+        self.calls.append((query, k, on))
+        if self.error:
+            raise self.error
+        return self.chunks[:k]
+
+
+POLICY_CHUNK = Chunk(
+    id="refunds@v2#approval",
+    policy_id="refunds",
+    version=2,
+    effective_from=date(2025, 11, 1),
+    sections=("approval",),
+    text="Refund policy - Approval\n\nUp to R$ 500.00 is approved automatically.",
+)
+
 
 NOW = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
+
+
+async def call_search(session, retriever, query="refund limit"):
+    async with Client(build_server(lambda: session, retriever=retriever)) as client:
+        return await client.call_tool("search_policies", {"query": query})
 
 
 @pytest.fixture
@@ -241,3 +271,30 @@ async def test_refund_with_open_dispute_tells_model_why(client, session):
     assert result.is_error
     assert "dispute" in result.content[0].text
     assert count(session.conn, "refund_requests") == 0
+
+
+@pytest.mark.anyio
+async def test_search_policies_returns_passages_for_session_date(session):
+    retriever = FakeRetriever([POLICY_CHUNK])
+    result = await call_search(session, retriever)
+    assert not result.is_error
+    [passage] = result.structured_content["passages"]
+    assert passage["policy"] == "refunds"
+    assert passage["version"] == 2
+    assert "R$ 500.00" in passage["text"]
+    assert retriever.calls == [("refund limit", 5, NOW.date())]
+
+
+@pytest.mark.anyio
+async def test_search_policies_without_retriever_is_error(session):
+    result = await call_search(session, None)
+    assert result.is_error
+    assert "not available" in result.content[0].text
+
+
+@pytest.mark.anyio
+async def test_search_failure_hides_internal_details(session):
+    retriever = FakeRetriever(error=RuntimeError("503 from pinecone-internal-host"))
+    result = await call_search(session, retriever)
+    assert "unavailable" in result.content[0].text
+    assert "pinecone-internal-host" not in result.content[0].text

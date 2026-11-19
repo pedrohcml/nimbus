@@ -16,6 +16,7 @@ from nimbus.agent.tools import McpTools
 from nimbus.agent.trace import write_trace
 from nimbus.mcp_server.config import session_from_env
 from nimbus.mcp_server.server import build_server
+from nimbus.rag.pinecone_store import policy_retriever
 
 EXIT_WORDS = {"exit", "quit"}
 
@@ -28,7 +29,7 @@ async def main() -> None:
     llm = GroqLLM(AsyncGroq(api_key=groq_api_key()), agent_model(), **sampling_options())
     trace_path = Path("traces") / f"{conversation_id}.jsonl"
 
-    async with Client(build_server(session_from_env)) as client:
+    async with Client(build_server(session_from_env, retriever=policy_retriever())) as client:
         graph = await build_agent_graph(
             llm=llm,
             tools=McpTools(client),
@@ -36,7 +37,7 @@ async def main() -> None:
         )
         print(
             f"Nimbus ({agent_model()}, {sampling_options() or 'default sampling'}). "
-            f"Nimbus ({agent_model()}). Conversation {conversation_id}. Type 'exit' to quit."
+            f"Conversation {conversation_id}. Type 'exit' to quit."
         )
 
         while True:
