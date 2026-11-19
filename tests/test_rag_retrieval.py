@@ -43,11 +43,11 @@ def test_bm25_finds_the_matching_chunk():
     assert [c.id for c in top] == ["fees#card"]
 
 
-def test_search_uses_the_version_in_effect():
+def test_search_uses_version_in_effect():
     retriever = BM25Retriever(CHUNKS)
 
     def ids(on):
-        return [c.id for c in retriever.search("approved automatically", k=4, on=on)]
+        return [c.id for c in retriever.search("approved 300 500", k=4, on=on)]
 
     assert "refunds@v2#approval" in ids(TODAY)
     assert "refunds@v1#approval" not in ids(TODAY)
@@ -56,4 +56,20 @@ def test_search_uses_the_version_in_effect():
 
 
 def test_search_returns_at_most_k():
-    assert len(BM25Retriever(CHUNKS).search("fee", k=2, on=TODAY)) == 2
+    assert len(BM25Retriever(CHUNKS).search("card fee hours delayed", k=1, on=TODAY)) == 1
+
+
+def test_tokenize_drops_stopwords():
+    assert tokenize("How long does my refund take?") == ["long", "refund"]
+    tokens = tokenize("Quanto custa o cartão?")
+    assert "o" not in tokens
+    assert "cartão" in tokens
+
+
+def test_tokenize_keeps_negations():
+    assert "não" in tokenize("Não recebi o cartão")
+    assert "not" in tokenize("I did not get it")
+
+
+def test_no_shared_word_means_no_result():
+    assert BM25Retriever(CHUNKS).search("adasd", k=3, on=TODAY) == []

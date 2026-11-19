@@ -59,13 +59,8 @@ def test_overlap_must_be_smaller_than_size():
 
 @pytest.mark.parametrize("chunker", [chunk_by_section, chunk_by_window])
 def test_shipped_corpus_has_unique_chunk_ids(chunker):
-    chunks = chunk_all(load_policies(), chunker)
+    docs = load_policies()
+    chunks = chunk_all(docs, chunker)
     ids = [c.id for c in chunks]
     assert len(ids) == len(set(ids))
-    assert {c.policy_id for c in chunks} == {
-        "refunds",
-        "disputes",
-        "fees",
-        "withdrawals",
-        "account_security",
-    }
+    assert {c.policy_id for c in chunks} == {d.id for d in docs}

@@ -64,6 +64,13 @@ def test_shipped_policies_are_valid():
         "fees",
         "withdrawals",
         "account_security",
+        "faq",
+        "identity_verification",
+        "limits",
+        "card",
+        "trading",
+        "deposits",
+        "account_closure",
     }
 
 
@@ -79,3 +86,11 @@ def test_refund_policy_matches_backedn_threshold():
 
 def test_dispute_policy_matches_backend_window():
     assert f"{services.DISPUTE_WINDOW.days} days" in current("disputes").text
+
+
+def test_faq_matches_backend_rules():
+    faq = current("faq").text
+    assert format_amount(services.REFUND_APPROVAL_THRESHOLD_MINOR, "BRL", "en") in faq
+    assert f"{services.DISPUTE_WINDOW.days} days" in faq
+    for limit in services.DELAY_LIMITS.values():
+        assert f"{int(limit.total_seconds() // 3600)} hours" in faq

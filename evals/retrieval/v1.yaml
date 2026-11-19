@@ -1,0 +1,365 @@
+cases:
+  # ---------- from v0, with the FAQ as an accepted answer ----------
+  - id: refund_auto_limit
+    question: "Up to what amount is a refund approved without anyone reviewing it?"
+    answers:
+      - {policy: refunds, sections: [approval]}
+      - {policy: faq, sections: [why-is-my-refund-under-review]}
+
+  - id: refund_auto_limit_june_2025
+    question: "Up to what amount is a refund approved without anyone reviewing it?"
+    as_of: 2025-06-01
+    answers:
+      - {policy: refunds, sections: [approval], version: 1}
+
+  - id: refund_partial
+    question: "Can I get back only part of what I paid?"
+    answers:
+      - {policy: refunds, sections: [partial-refunds]}
+      - {policy: faq, sections: [can-i-get-a-partial-refund]}
+
+  - id: refund_crypto
+    question: "Can a crypto withdrawal be refunded?"
+    answers:
+      - {policy: refunds, sections: [what-can-be-refunded]}
+      - {policy: faq, sections: [what-can-be-refunded]}
+      - {policy: withdrawals, sections: [cancelling]}
+      - {policy: faq, sections: [can-i-cancel-a-withdrawal]}
+
+  - id: refund_arrival
+    question: "When will the refunded money show up on my card?"
+    answers:
+      - {policy: refunds, sections: [when-the-money-arrives]}
+      - {policy: faq, sections: [when-will-i-receive-my-refund]}
+
+  - id: refund_during_dispute
+    question: "I already contested this charge. Can I also ask for my money back?"
+    answers:
+      - {policy: refunds, sections: [refunds-and-disputes]}
+      - {policy: faq, sections: [can-i-ask-for-a-refund-while-a-dispute-is-open]}
+
+  - id: dispute_deadline
+    question: "How long does the team take to answer my case?"
+    answers:
+      - {policy: disputes, sections: [how-disputes-work]}
+      - {policy: faq, sections: [how-long-does-a-dispute-take]}
+
+  - id: dispute_outcomes
+    question: "What can happen after the investigation ends?"
+    answers:
+      - {policy: disputes, sections: [possible-outcomes]}
+      - {policy: faq, sections: [how-long-does-a-dispute-take]}
+
+  - id: dispute_when
+    question: "In which situations should I contest a charge?"
+    answers:
+      - {policy: disputes, sections: [when-to-open-a-dispute]}
+      - {policy: faq, sections: [how-do-i-open-a-dispute]}
+
+  - id: fee_miner_refund
+    question: "Will I get the miner fee back?"
+    answers:
+      - {policy: fees, sections: [bitcoin-withdrawals]}
+
+  - id: fee_card_cost
+    question: "How much does it cost to get the card?"
+    answers:
+      - {policy: fees, sections: [card-fees]}
+      - {policy: card, sections: [getting-a-card]}
+
+  - id: fee_brl_withdrawal
+    question: "Do I pay anything to take reais out of my account?"
+    answers:
+      - {policy: fees, sections: [deposits-and-withdrawals-in-reais]}
+
+  - id: btc_confirmations
+    question: "How many confirmations does a bitcoin withdrawal need?"
+    answers:
+      - {policy: withdrawals, sections: [bitcoin-confirmations]}
+      - {policy: faq, sections: [how-long-does-a-bitcoin-withdrawal-take]}
+
+  - id: withdrawal_stuck
+    question: "My withdrawal has been confirming for 5 hours, is that normal?"
+    answers:
+      - {policy: withdrawals, sections: [delays]}
+      - {policy: faq, sections: [when-is-a-transaction-considered-delayed]}
+
+  - id: withdrawal_stop
+    question: "Can I stop a withdrawal I already sent?"
+    answers:
+      - {policy: withdrawals, sections: [cancelling]}
+      - {policy: faq, sections: [can-i-cancel-a-withdrawal]}
+
+  - id: security_2fa_request
+    question: "Someone from Nimbus asked for my 2FA code, is that legit?"
+    answers:
+      - {policy: account_security, sections: [what-nimbus-never-asks-for]}
+      - {policy: faq, sections: [will-nimbus-ever-ask-for-my-password-or-card-number]}
+
+  - id: security_takeover
+    question: "I think somebody got into my account"
+    answers:
+      - {policy: account_security, sections: [suspected-account-takeover]}
+      - {policy: faq, sections: [i-don-t-recognize-a-transaction-what-should-i-do]}
+
+  - id: pt_refund_auto_limit
+    question: "Qual o valor máximo de reembolso aprovado automaticamente?"
+    language: pt
+    answers:
+      - {policy: refunds, sections: [approval]}
+      - {policy: faq, sections: [why-is-my-refund-under-review]}
+
+  - id: pt_refund_partial
+    question: "Posso pedir só uma parte do dinheiro de volta?"
+    language: pt
+    answers:
+      - {policy: refunds, sections: [partial-refunds]}
+      - {policy: faq, sections: [can-i-get-a-partial-refund]}
+
+  - id: pt_refund_arrival
+    question: "Quando o dinheiro do reembolso cai no cartão?"
+    language: pt
+    answers:
+      - {policy: refunds, sections: [when-the-money-arrives]}
+      - {policy: faq, sections: [when-will-i-receive-my-refund]}
+
+  - id: pt_dispute_deadline
+    question: "Quanto tempo a equipe leva para responder uma disputa?"
+    language: pt
+    answers:
+      - {policy: disputes, sections: [how-disputes-work]}
+      - {policy: faq, sections: [how-long-does-a-dispute-take]}
+
+  - id: pt_fee_card_cost
+    question: "Quanto custa emitir o cartão?"
+    language: pt
+    answers:
+      - {policy: fees, sections: [card-fees]}
+      - {policy: card, sections: [getting-a-card]}
+
+  - id: pt_fee_miner_refund
+    question: "A taxa da rede do bitcoin é devolvida?"
+    language: pt
+    answers:
+      - {policy: fees, sections: [bitcoin-withdrawals]}
+
+  - id: pt_withdrawal_stuck
+    question: "Meu saque está confirmando há horas, isso é normal?"
+    language: pt
+    answers:
+      - {policy: withdrawals, sections: [delays]}
+      - {policy: faq, sections: [when-is-a-transaction-considered-delayed]}
+
+  - id: pt_security_takeover
+    question: "Acho que invadiram minha conta"
+    language: pt
+    answers:
+      - {policy: account_security, sections: [suspected-account-takeover]}
+      - {policy: faq, sections: [i-don-t-recognize-a-transaction-what-should-i-do]}
+
+  # ---------- exact terms and short queries ----------
+  - id: exact_2fa
+    question: "2FA code request"
+    answers:
+      - {policy: account_security, sections: [what-nimbus-never-asks-for]}
+      - {policy: faq, sections: [will-nimbus-ever-ask-for-my-password-or-card-number]}
+
+  - id: exact_r300_mid_2025
+    question: "Is the auto-approval limit still R$ 300.00?"
+    as_of: 2025-07-01
+    answers:
+      - {policy: refunds, sections: [approval], version: 1}
+
+  - id: exact_tx_prefix
+    question: "what is a tx_ code?"
+    answers:
+      - {policy: faq, sections: [how-do-i-find-a-transaction-id]}
+
+  - id: short_card_fee
+    question: "card fee?"
+    answers:
+      - {policy: fees, sections: [card-fees]}
+      - {policy: card, sections: [getting-a-card]}
+
+  - id: short_kyc
+    question: "KYC status"
+    answers:
+      - {policy: identity_verification, sections: [verification-statuses]}
+      - {policy: faq, sections: [can-support-see-my-balance-or-my-verification-status]}
+
+  - id: pt_short_withdrawal_limit
+    question: "limite de saque"
+    language: pt
+    answers:
+      - {policy: limits, sections: [daily-withdrawal-limits]}
+
+  # ---------- confusing neighbors ----------
+  - id: withdrawal_limit_not_refund_limit
+    question: "What is the most I can withdraw in reais per day?"
+    answers:
+      - {policy: limits, sections: [daily-withdrawal-limits]}
+
+  - id: card_purchase_declined
+    question: "Why was my card purchase of R$ 12,000 declined?"
+    answers:
+      - {policy: card, sections: [declined-purchases]}
+      - {policy: limits, sections: [card-spending-limit]}
+
+  - id: trading_fee
+    question: "Do you charge a fee when I buy bitcoin?"
+    answers:
+      - {policy: trading, sections: [price-and-spread]}
+
+  - id: trade_undo
+    question: "I bought bitcoin by mistake, can you undo it?"
+    answers:
+      - {policy: trading, sections: [trades-are-final]}
+      - {policy: refunds, sections: [what-can-be-refunded]}
+      - {policy: faq, sections: [what-can-be-refunded]}
+
+  - id: deposit_from_friend
+    question: "My friend sent me money by PIX, where is it?"
+    answers:
+      - {policy: deposits, sections: [deposits-from-other-people]}
+
+  - id: deposit_wrong_coin
+    question: "I sent USDT to my bitcoin address"
+    answers:
+      - {policy: deposits, sections: [depositing-bitcoin]}
+
+  - id: deposit_pending_a_day
+    question: "My PIX deposit is still pending after a whole day"
+    answers:
+      - {policy: deposits, sections: [depositing-reais]}
+      - {policy: withdrawals, sections: [delays]}
+      - {policy: faq, sections: [when-is-a-transaction-considered-delayed]}
+
+  - id: kyc_review_time
+    question: "How long until my documents are approved?"
+    answers:
+      - {policy: identity_verification, sections: [how-long-verification-takes]}
+
+  - id: kyc_blocks_withdrawal
+    question: "Why can't I withdraw before my verification is done?"
+    answers:
+      - {policy: identity_verification, sections: [what-you-can-do-before-verification]}
+
+  - id: lost_card
+    question: "I lost my card"
+    answers:
+      - {policy: card, sections: [lost-or-stolen-card]}
+
+  - id: close_account
+    question: "How do I delete my account?"
+    answers:
+      - {policy: account_closure, sections: [closing-your-account]}
+
+  - id: close_with_open_dispute
+    question: "Can I close my account if I still have a dispute open?"
+    answers:
+      - {policy: account_closure, sections: [open-disputes-and-refunds]}
+
+  - id: data_after_closure
+    question: "What happens to my data after I leave Nimbus?"
+    answers:
+      - {policy: account_closure, sections: [data-after-closure]}
+
+  - id: raise_withdrawal_limit
+    question: "Can I increase how much I can withdraw?"
+    answers:
+      - {policy: limits, sections: [raising-your-limits]}
+
+  - id: card_abroad
+    question: "Does the card work when I travel to Argentina?"
+    answers:
+      - {policy: card, sections: [purchases-abroad]}
+
+  - id: refund_or_dispute
+    question: "What's the difference between contesting a charge and asking for my money back?"
+    answers:
+      - {policy: faq, sections: [what-is-the-difference-between-a-refund-and-a-dispute]}
+
+  - id: approved_but_no_money
+    question: "My refund says approved but I still don't have the money"
+    answers:
+      - {policy: faq, sections: [what-do-the-refund-statuses-mean]}
+      - {policy: faq, sections: [when-will-i-receive-my-refund]}
+      - {policy: refunds, sections: [when-the-money-arrives]}
+
+  - id: balance_in_chat
+    question: "Can you tell me my bitcoin balance?"
+    answers:
+      - {policy: faq, sections: [can-support-see-my-balance-or-my-verification-status]}
+
+  - id: chat_is_recorded
+    question: "Is what you do in this chat recorded?"
+    answers:
+      - {policy: faq, sections: [are-support-actions-recorded]}
+
+  - id: other_coins
+    question: "Can I hold ethereum in Nimbus?"
+    answers:
+      - {policy: faq, sections: [which-currencies-does-nimbus-support]}
+
+  - id: status_reversed
+    question: "What does reversed mean on my transaction?"
+    answers:
+      - {policy: faq, sections: [what-does-each-transaction-status-mean]}
+
+  - id: one_case_per_chat
+    question: "If I ask for an agent again, do I get a new ticket?"
+    answers:
+      - {policy: faq, sections: [what-happens-when-i-ask-for-a-human]}
+
+  # ---------- realistic messages ----------
+  - id: noisy_duplicate
+    question: "hi, I got charged twice on tx_51c7e0d4 for streamflix, this is ridiculous!! how long until I get my money back??"
+    answers:
+      - {policy: refunds, sections: [when-the-money-arrives]}
+      - {policy: faq, sections: [when-will-i-receive-my-refund]}
+
+  - id: noisy_hack
+    question: "someone changed my email and withdrew everything, please help me NOW"
+    answers:
+      - {policy: account_security, sections: [suspected-account-takeover]}
+      - {policy: faq, sections: [i-don-t-recognize-a-transaction-what-should-i-do]}
+
+  - id: pt_noisy_withdrawal
+    question: "boa noite, fiz um saque de bitcoin faz umas 5 horas e até agora nada, o app diz confirmando, o que tá acontecendo?"
+    language: pt
+    answers:
+      - {policy: withdrawals, sections: [delays]}
+      - {policy: faq, sections: [when-is-a-transaction-considered-delayed]}
+
+  - id: pt_noisy_lost_card
+    question: "perdi minha carteira com o cartão da nimbus dentro, e agora?"
+    language: pt
+    answers:
+      - {policy: card, sections: [lost-or-stolen-card]}
+
+  # ---------- dates ----------
+  - id: pt_refund_auto_limit_aug_2025
+    question: "Qual o limite de aprovação automática de reembolso?"
+    as_of: 2025-08-01
+    language: pt
+    answers:
+      - {policy: refunds, sections: [approval], version: 1}
+
+  # ---------- more portuguese ----------
+  - id: pt_kyc_review_time
+    question: "Quanto tempo demora a verificação de identidade?"
+    language: pt
+    answers:
+      - {policy: identity_verification, sections: [how-long-verification-takes]}
+
+  - id: pt_trading_fee
+    question: "Tem taxa para comprar bitcoin?"
+    language: pt
+    answers:
+      - {policy: trading, sections: [price-and-spread]}
+
+  - id: pt_close_account
+    question: "Como encerro minha conta?"
+    language: pt
+    answers:
+      - {policy: account_closure, sections: [closing-your-account]}

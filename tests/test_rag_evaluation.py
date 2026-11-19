@@ -4,6 +4,7 @@ from pathlib import Path
 from nimbus.rag.chunking import Chunk, chunk_all, chunk_by_section
 from nimbus.rag.corpus import load_policies
 from nimbus.rag.evaluation import (
+    Answer,
     RetrievalCase,
     average,
     evaluate,
@@ -13,7 +14,9 @@ from nimbus.rag.evaluation import (
 )
 
 CASE = RetrievalCase(
-    id="q", question="?", policy="refunds", sections=["approval", "partial-refunds"]
+    id="q",
+    question="?",
+    answers=[Answer(policy="refunds", sections=["approval", "partial-refunds"])],
 )
 
 
@@ -55,22 +58,25 @@ def test_reciprocal_rank_uses_first_hit():
     assert reciprocal_rank(ranked[:1], CASE) == 0
 
 
-def test_sanem_action_another_policy_doesnt_count():
+def test_same_action_another_policy_doesnt_count():
     assert recall_at_k([chunk("disputes", "approval")], CASE, 1) == 0
 
 
 def test_wrong_version_doesnt_count():
-    case = CASE.model_copy(update={"version": 1})
+    case = RetrievalCase(
+        id="q", question="?", answers=[Answer(policy="refunds", sections=["approval"], version=1)]
+    )
     assert recall_at_k([chunk("refunds", "approval", version=2)], case, 1) == 0
 
 
-def test_shipped_cases_point_read_sections():
-    cases = load_retrieval_cases(Path("evals/retrieval/v0.yaml"))
+def test_shipped_cases_point_real_sections():
+    cases = load_retrieval_cases(Path("evals/retrieval/v1.yaml"))
     chunks = chunk_all(load_policies(), chunk_by_section)
     known = {(c.policy_id, section) for c in chunks for section in c.sections}
     for case in cases:
-        for section in case.sections:
-            assert (case.policy, section) in known, f"{case.id}: {case.policy}/{section}"
+        for answer in case.answers:
+            for section in answer.sections:
+                assert (answer.policy, section) in known, f"{case.id}: {answer.policy}/{section}"
 
 
 def test_evaluate_searches_once_per_case():
@@ -82,3 +88,18 @@ def test_evaluate_searches_once_per_case():
 
 def test_average_over_cases():
     assert average([{"mrr": 1.0}, {"mrr": 0.0}]) == {"mrr": 0.5}
+
+
+def test_any_accepted_answer_counts():
+    case = RetrievalCase(
+        id="q",
+        question="?",
+        answers=[
+            Answer(policy="refunds", sections=["approval"]),
+            Answer(policy="faq", sections=["why-is-my-refund-under-review"]),
+        ],
+    )
+    ranked = [chunk("fees", "card-fees"), chunk("faq", "why-is-my-refund-under-review")]
+    assert recall_at_k(ranked, case, 1) == 0
+    assert recall_at_k(ranked, case, 2) == 1
+    assert reciprocal_rank(ranked, case) == 0.5

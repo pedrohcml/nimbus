@@ -12,14 +12,20 @@ from nimbus.rag.retrieval import Retriever
 KS = (1, 3, 5)
 
 
+class Answer(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    policy: str
+    sections: list[str] = Field(min_length=1)
+    version: int | None = None
+
+
 class RetrievalCase(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: str
     question: str
-    policy: str
-    sections: list[str] = Field(min_length=1)
-    version: int | None = None
+    answers: list[Answer] = Field(min_length=1)
     as_of: date = BASE_TIME.date()
     language: Literal["en", "pt"] = "en"
 
@@ -33,23 +39,23 @@ def load_retrieval_cases(path: Path) -> list[RetrievalCase]:
     return cases
 
 
-def _found(chunks: list[Chunk], case: RetrievalCase) -> set[str]:
+def _found(chunks: list[Chunk], answer: Answer) -> set[str]:
     return {
         section
         for chunk in chunks
-        if chunk.policy_id == case.policy and case.version in (None, chunk.version)
+        if chunk.policy_id == answer.policy and answer.version in (None, chunk.version)
         for section in chunk.sections
-        if section in case.sections
+        if section in answer.sections
     }
 
 
 def recall_at_k(ranked: list[Chunk], case: RetrievalCase, k: int) -> float:
-    return len(_found(ranked[:k], case)) / len(case.sections)
+    return max(len(_found(ranked[:k], answer)) / len(answer.sections) for answer in case.answers)
 
 
 def reciprocal_rank(ranked: list[Chunk], case: RetrievalCase) -> float:
     for rank, chunk in enumerate(ranked, start=1):
-        if _found([chunk], case):
+        if any(_found([chunk], answer) for answer in case.answers):
             return 1 / rank
     return 0.0
 
@@ -60,9 +66,14 @@ def score_case(ranked: list[Chunk], case: RetrievalCase) -> dict[str, float]:
     return scores
 
 
+def search_all(retriever: Retriever, cases: list[RetrievalCase]) -> list[list[Chunk]]:
+    return [retriever.search(case.question, max(KS), case.as_of) for case in cases]
+
+
 def evaluate(retriever: Retriever, cases: list[RetrievalCase]) -> dict[str, float]:
     return [
-        score_case(retriever.search(case.question, max(KS), case.as_of), case) for case in cases
+        score_case(ranked, case)
+        for ranked, case in zip(search_all(retriever, cases), cases, strict=True)
     ]
 
 
