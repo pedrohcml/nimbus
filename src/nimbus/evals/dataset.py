@@ -9,7 +9,7 @@ from nimbus.backend.seed import CUSTOMER_MAIN, SCENARIO_IDS
 
 _PLACEHOLDER = re.compile(r"\{([A-Z][A-Z0-9_]*)\}")
 
-Category = Literal["lookup", "actions", "security", "scope", "escalation", "language"]
+Category = Literal["lookup", "actions", "security", "scope", "escalation", "language", "policy"]
 
 
 class _Strict(BaseModel):
@@ -27,8 +27,11 @@ class TurnExpect(_Strict):
 
 
 class Turn(_Strict):
+    model_config = ConfigDict(extra="forbid")
+
     user: str
     expect: TurnExpect = Field(default_factory=TurnExpect)
+    language: Literal["en", "pt"] | None = None
 
 
 class DbCheck(_Strict):

@@ -16,6 +16,7 @@ from nimbus.evals.checks import CheckResult, check_db, check_turn, ids_in
 from nimbus.evals.dataset import EvalCase
 from nimbus.mcp_server.server import build_server
 from nimbus.mcp_server.session import Session
+from nimbus.rag.retrieval import Retriever
 
 EVAL_NOW = BASE_TIME
 
@@ -66,6 +67,7 @@ async def run_case(
     run_index: int = 0,
     now: datetime = EVAL_NOW,
     seed: int = 42,
+    retriever: Retriever | None = None,
 ) -> RunResult:
     result = RunResult(case_id=case.id, run_index=run_index)
     llm = make_llm()
@@ -86,7 +88,7 @@ async def run_case(
     )
 
     try:
-        async with Client(build_server(lambda: session, **options)) as client:
+        async with Client(build_server(lambda: session, retriever=retriever, **options)) as client:
             graph = await build_agent_graph(
                 llm=llm,
                 tools=McpTools(client),
@@ -107,7 +109,11 @@ async def run_case(
                         user=turn.user,
                         answer=agent.answer,
                         checks=check_turn(
-                            turn.expect, agent.trace, agent.answer, known_ids, case.language
+                            turn.expect,
+                            agent.trace,
+                            agent.answer,
+                            known_ids,
+                            turn.language or case.language,
                         ),
                         trace=agent.trace,
                     )
@@ -127,6 +133,7 @@ async def run_suite(
     pause_s: float = 0.0,
     max_consecutive_errors: int = 3,
     on_result: Callable[[RunResult], None] | None = None,
+    retriever: Retriever | None = None,
 ) -> list[RunResult]:
     results: list[RunResult] = []
     consecutive_errors = 0
@@ -134,7 +141,7 @@ async def run_suite(
         for run_index in range(runs):
             if results and pause_s:
                 await sleep(pause_s)
-            result = await run_case(case, make_llm, run_index=run_index)
+            result = await run_case(case, make_llm, run_index=run_index, retriever=retriever)
             results.append(result)
             if on_result is not None:
                 on_result(result)

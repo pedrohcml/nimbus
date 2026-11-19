@@ -1,5 +1,5 @@
 cases:
-  # ---------- from v0, with the FAQ as an accepted answer ----------
+  # ---------- from v0 with the FAQ as an accepted answer ----------
   - id: refund_auto_limit
     question: "Up to what amount is a refund approved without anyone reviewing it?"
     answers:
@@ -157,7 +157,7 @@ cases:
       - {policy: account_security, sections: [suspected-account-takeover]}
       - {policy: faq, sections: [i-don-t-recognize-a-transaction-what-should-i-do]}
 
-  # ---------- exact terms and short queries ----------
+  # ---------- exact terms n short queries ----------
   - id: exact_2fa
     question: "2FA code request"
     answers:
@@ -345,7 +345,7 @@ cases:
     answers:
       - {policy: refunds, sections: [approval], version: 1}
 
-  # ---------- more portuguese ----------
+  # ---------- portuguese ----------
   - id: pt_kyc_review_time
     question: "Quanto tempo demora a verificação de identidade?"
     language: pt

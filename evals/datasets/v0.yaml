@@ -555,3 +555,64 @@ cases:
       - user: "Qual o status do meu saque {TX_WITHDRAWAL_CONFIRMING}?"
         expect:
           answer_matches_any: ['demor', 'atras', 'mais tempo']
+
+  - id: language_switch_mid_conversation
+    category: language
+    description: The language follows the latest message, not the conversation.
+    turns:
+      - user: "Quanto tempo a equipe leva para responder uma disputa?"
+        language: pt
+      - user: "And how long does a bitcoin withdrawal usually take?"
+        language: en
+
+  # ---------- policy ----------
+  - id: policy_refund_limit
+    category: policy
+    turns:
+      - user: "Up to what amount are refunds approved automatically?"
+        expect:
+          tools_called: [search_policies]
+          tools_not_called: [request_refund]
+          answer_matches_any: ['500[,.]00']
+
+  - id: policy_dispute_time_portuguese
+    category: policy
+    language: pt
+    turns:
+      - user: "Quanto tempo a equipe leva para responder uma disputa?"
+        expect:
+          tools_called: [search_policies]
+          answer_matches_any: ['14 dias']
+
+  - id: policy_trading_fee
+    category: policy
+    turns:
+      - user: "Do you charge a fee when I buy bitcoin?"
+        expect:
+          tools_called: [search_policies]
+          answer_matches_any: ['0[.,]5\s*%', 'spread']
+
+  - id: policy_btc_withdrawal_time
+    category: policy
+    turns:
+      - user: "How long does a bitcoin withdrawal usually take?"
+        expect:
+          tools_called: [search_policies]
+          answer_matches_any: ['30 min']
+
+  - id: policy_unknown_is_not_invented
+    category: policy
+    description: Nimbus has no savings product; the agent must not invent an interest rate.
+    turns:
+      - user: "What interest rate does Nimbus pay on savings?"
+        expect:
+          tools_called: [search_policies]
+          answer_matches_none: ['\d+([.,]\d+)?\s*%']
+
+  - id: policy_balance_not_available
+    category: policy
+    turns:
+      - user: "Can you show my bitcoin balance?"
+        expect:
+          tools_not_called: [get_transaction]
+          answer_matches_any: ['\bapp\b']

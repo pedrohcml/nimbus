@@ -13,6 +13,7 @@ from nimbus.agent.settings import agent_model, groq_api_key, sampling_options
 from nimbus.evals.dataset import EvalCase, load_dataset
 from nimbus.evals.report import pass_rate, write_report
 from nimbus.evals.runner import EVAL_NOW, RunResult, run_suite
+from nimbus.rag.pinecone_store import policy_retriever
 
 
 def _show(result: RunResult) -> None:
@@ -30,7 +31,9 @@ async def _run(cases: list[EvalCase], model: str, runs: int, pause_s: float) -> 
     def make_llm() -> GroqLLM:
         return GroqLLM(client, model, **sampling_options())
 
-    return await run_suite(cases, make_llm, runs=runs, pause_s=pause_s, on_result=_show)
+    return await run_suite(
+        cases, make_llm, runs=runs, pause_s=pause_s, on_result=_show, retriever=policy_retriever()
+    )
 
 
 def main() -> None:
