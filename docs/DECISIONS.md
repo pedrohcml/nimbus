@@ -143,3 +143,66 @@ Single failures left:
 The prompt already forbids both. the real fix for IDs is an output guardrail to be implemented in the future.
 
 Result (uv run poe test): 165 passed in 3.41s
+
+
+
+## Stage 6: RAG
+
+**Corpus**
+- Policies are markdown files with a YAML header containing id, title, version and effective_from. Markdown gives the headings that section chunking uses. The header gives versions.
+- Versions matter because the right answer depends on the date. The refund policy has v1 (auto-approval up to R$ 300.00) and v2 (R$ 500.00, plus dispute block). in_effect picks, for each policy, the version with the latest effective_from that already started.
+- Tests keep the documents in sync with the backend. The refund threshold, the dispute window and the delay limits are written in both places, and test fails if they differ.
+- The FAQ was written from the backend rules with every answer traceable to a constant or check.
+- Six distractor policies (identity verification, limits, card, trading, deposits and account closure) were added to give retrieval near misses, such as the withdrawal limit next to the refund approval limit.
+- Markdown instead of PDF for now as PDF extraction loses structure and adds noise, and measuring retrieval and extraction at the same time would mix two causes.
+
+**Chunking**
+- Two strategies were developed and tested: chunking per section (by heading), and fixed windows of 60 words with 15 of overlap.
+- Every chunk records the sections it covers, so both strategies are scored with the same labels (policy and section) and not chunk IDs.
+- The document title is prepended to every chunk, so a chunk like "up to R$ 500.00 is approved automatically" still says it is about refunds.
+- All versions are chunked. the date filter happens at search time.
+
+**Measuring retrieval**
+- Metrics like recall@k (if the correct chunk is amongst the first k results) and MRR (1 divided by the position of the 1st correct result). Retrieval is measured without any LLM, so it costs no token usage quota.
+- The first eval set (25 questions) became too easy once dense retrieval was added. recall@3 was 1.00 for both chunkings methods, so it could not compare variants anymore.
+- The second set (61 questions, being 46 in english and 15 in portuguese) adds exact terms, short queries, confusing neighbors, realistic messages and dates. Each question qccepts any of several answers due to the FAQ repeating policy rules.
+- rag-eval --misses lists what came first when rank 1 was wrong. Most decisions below came from that list and not from the averages.
+- With 61 questions, a difference of 1 or 2 questions can be considered noise. No weight or threshold was tuned on this set to avoid fitting the ruler.
+
+**Results (61 questions)**
+**Variant                   | recall@1 | recall@3 | recall@5 | MRR**
+BM25, section               | 0.36     | 0.54     | 0.59     | 0.45
+BM25, window                | 0.49     | 0.61     | 0.64     | 0.55
+Pinecone, section           | 0.85     | 0.93     | 0.98     | 0.90
+Pinecone, window            | 0.82     | 0.95     | 0.98     | 0.89
+RRF, section                | 0.70     | 0.87     | 0.90     | 0.78
+RRF, window                 | 0.75     | 0.89     | 0.92     | 0.83
+Pinecone + rerank, section  | 0.87     | 0.97     | 0.97     | 0.91
+
+- BM25 compares words, so Portuguese questions against an English corpus failed almost completely. Without stopword removal, question-shaped FAQ chunks matched unrelated questions through words like "can", "I" and "my", and queries with no shared word returned the same arbitrary chunks in corpus order. spaCy stopwords (keeping negations) and dropping zero-score results made BM25 more of an honest method, as it cannot return anything it cannot match.
+- Pinecone (multilingual-e5-large, embedded by Pinecone) solved Portuguese. From 0.07 to 1.00 recall@5.
+- Hybrid search with reciprocal rank fusion was worse than POinecone alone. With equal weights, any wrong BM25 result that also appears anywhere in Pinecone's top 20 outranks Pinecone's first result. It fixed 1 question and broke 10. Did not use weighted fusion, because weighting each of the 61 questions individually with fit the ruler. Kept in the code but not used by the agent.
+- Reranking with bge-reranker-v2-m3 fixed 3 near-miss questions, broke 2 and could be considered a tie with Pinecone alone. It costs one more call per search on a quota of 500 rerank requests a month. Kept in the code but not used by the agent.
+- Section and window chunking tie with Pinecone, but section was kept. Better recall@1 in Portuguese and chunks with a complete meaning are better to cite. Window chunks that mix sections usually became generic results for unrelated questions.
+
+**Pinecone**
+- In this project, a managed vector database is more than enough for a corpus of only 12 documents, but it was chosen to show the integration with a production tool.
+- Pinecone embeds the text itself, so no local model or PyTorch had to be installed on th work computer.
+- One namespace poer chunking. The versionfilter is a metadata filter on policy_version, computed from the versions in effect.
+- Ingestion is a separate command. Documents become searchable a few seconds after upsert and the DOcuments API has no count to wait on, so ingestion waits a fixed 10 seconds.
+
+**search_policies tool**
+- The tool lives in the MCP server next to the others and takes a Retriever, so the server does not know it is Pinecone.
+- The search date comes from the session clock, not from the model.
+- The model always gets 5 passages. It started at 3, but a manual test missed the spread rule at 3, and recall@5 is 0.98 against 0.93 at 3.
+- Pinecone's SDK is synchronous and calls the network, so the search runs in a worker thread to keep the server responsive. Failures reach the model as a clean error that suggests escalating.
+- The tool is always registered, so the tools the model sees always match the prompt.
+
+**Agent eval with prompt 9.0**
+- Language: 5 of 5, including a conversation that switches from Portuguese to English.
+- Policy, prompt 9.0: 3 of 6. One real failure: Asked for a balance, the agent declined but did not say where to find it. Two failures were the ruler: The model wrote "30 minutes" with a narrow no-break space which the regex did not match, and a correct Portuguese answer quoted English policy text, which tipped the language detector. Answers are now normalized with NFKC before pattern checks, and the new prompt 10.0 tells the model not to quote policies in another language.
+- Policy, prompt 10.0: 6 of 6. One run of 6 cases shows the fixes work, not that the rate is 100%.
+- A Portuguese answer wrote the field name "delayed". No automatic check can catch it without false positives in English answers. It will be assessed later.
+
+
+Result (uv run poe test): 223 passed in 4.04s
