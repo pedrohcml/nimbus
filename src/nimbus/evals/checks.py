@@ -1,5 +1,6 @@
 import re
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -62,6 +63,7 @@ def check_turn(
     known_ids: set[str],
     language: str = "en",
 ) -> list[CheckResult]:
+    answer = unicodedata.normalize("NFKC", answer)
     calls = _tool_results(trace)
     called = sorted({call["name"] for call in calls})
     results: list[CheckResult] = []
@@ -82,13 +84,12 @@ def check_turn(
         )
         results.append(CheckResult(f"tool_args:{tool}", ok, f"expected {expected}, got {seen}"))
     if expect.answer_matches_any:
-        ok = any(re.search(p, answer, re.IGNORECASE) for p in expect.answer_matches_any)
-        results.append(
-            CheckResult("answer_matches_any", ok, f"none of {expect.answer_matches_any} found")
-        )
+        matched = [p for p in expect.answer_matches_any if re.search(p, answer, re.IGNORECASE)]
+        results.append(CheckResult("answer_matches_any", bool(matched), f"matched: {matched}"))
     for pattern in expect.answer_matches_none:
-        ok = re.search(pattern, answer, re.IGNORECASE) is None
-        results.append(CheckResult(f"answer_matches_none:{pattern}", ok, "pattern found"))
+        found = re.search(pattern, answer, re.IGNORECASE)
+        detail = f"found: {found.group()!r}" if found else "not found"
+        results.append(CheckResult(f"answer_matches_none:{pattern}", found is None, detail))
 
     results.extend(_automatic_checks(trace, answer, known_ids, language))
     return results

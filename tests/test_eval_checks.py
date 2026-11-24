@@ -135,3 +135,24 @@ def test_not_called_flags_a_request_waiting_for_confirmation():
     ]
     result = run(TurnExpect(tools_not_called=["request_refund"]), trace)
     assert not result["tools_not_called:request_refund"].passed
+
+
+def test_answer_patterns_ignore_unusual_spaces():
+    result = by_name(
+        check_turn(
+            TurnExpect(answer_matches_any=["30 min"]), fake_trace(), "about 30\u202fminutes", set()
+        )
+    )
+    assert result["answer_matches_any"].passed
+
+
+def test_answer_check_detail_names_matching_pattern():
+    result = by_name(
+        check_turn(
+            TurnExpect(answer_matches_any=["14 days", "two weeks"]),
+            fake_trace(),
+            "within 14 days",
+            set(),
+        )
+    )
+    assert result["answer_matches_any"].detail == "matched: ['14 days']"
