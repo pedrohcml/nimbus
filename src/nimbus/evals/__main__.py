@@ -5,11 +5,10 @@ from pathlib import Path
 
 import anyio
 from dotenv import load_dotenv
-from groq import AsyncGroq
 
-from nimbus.agent.groq_llm import GroqLLM
+from nimbus.agent.ollama_llm import OllamaLLM, ollama_client
 from nimbus.agent.prompts import build_system_prompt
-from nimbus.agent.settings import agent_model, groq_api_key, sampling_options
+from nimbus.agent.settings import agent_model, reasoning_effort, sampling_options
 from nimbus.evals.dataset import EvalCase, load_dataset
 from nimbus.evals.report import pass_rate, write_report
 from nimbus.evals.runner import EVAL_NOW, RunResult, run_suite
@@ -26,10 +25,10 @@ def _show(result: RunResult) -> None:
 
 
 async def _run(cases: list[EvalCase], model: str, runs: int, pause_s: float) -> list[RunResult]:
-    client = AsyncGroq(api_key=groq_api_key(), max_retries=6)
+    client = ollama_client()
 
-    def make_llm() -> GroqLLM:
-        return GroqLLM(client, model, **sampling_options())
+    def make_llm() -> OllamaLLM:
+        return OllamaLLM(client, model, reasoning_effort(), **sampling_options())
 
     return await run_suite(
         cases, make_llm, runs=runs, pause_s=pause_s, on_result=_show, retriever=policy_retriever()
@@ -64,6 +63,7 @@ def main() -> None:
         "prompt_sha": hashlib.sha256(build_system_prompt(EVAL_NOW).encode()).hexdigest()[:12],
         "dataset": args.dataset,
         "runs": args.runs,
+        "reasoning_effort": reasoning_effort(),
     }
     md_path, _ = write_report(
         Path(args.out), started.strftime("%Y%m%d-%H%M%S"), cases, results, meta

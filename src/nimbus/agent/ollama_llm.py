@@ -2,14 +2,15 @@ import json
 import logging
 from typing import Any
 
-from groq import AsyncGroq
+from openai import AsyncOpenAI
 
+from nimbus.agent.settings import ollama_base_url
 from nimbus.agent.types import LLMResponse, Message, ToolCall, ToolSpec
 
 logger = logging.getLogger(__name__)
 
 
-def to_groq_tools(specs: list[ToolSpec]) -> list[dict[str, Any]]:
+def to_chat_tools(specs: list[ToolSpec]) -> list[dict[str, Any]]:
     return [
         {
             "type": "function",
@@ -23,7 +24,7 @@ def to_groq_tools(specs: list[ToolSpec]) -> list[dict[str, Any]]:
     ]
 
 
-def to_groq_messages(messages: list[Message]) -> list[dict[str, Any]]:
+def to_chat_messages(messages: list[Message]) -> list[dict[str, Any]]:
     converted: list[dict[str, Any]] = []
     for message in messages:
         if message.role == "tool":
@@ -63,7 +64,7 @@ def _parse_arguments(raw: str | None) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def from_groq_message(message: Any) -> LLMResponse:
+def from_chat_message(message: Any) -> LLMResponse:
     tool_calls = tuple(
         ToolCall(
             id=call.id,
@@ -79,10 +80,14 @@ def from_groq_message(message: Any) -> LLMResponse:
     )
 
 
-class GroqLLM:
+def ollama_client() -> AsyncOpenAI:
+    return AsyncOpenAI(base_url=ollama_base_url(), api_key="ollama")
+
+
+class OllamaLLM:
     def __init__(
         self,
-        client: AsyncGroq,
+        client: AsyncOpenAI,
         model: str,
         reasoning_effort: str = "medium",
         *,
@@ -102,10 +107,10 @@ class GroqLLM:
     async def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         response = await self._client.chat.completions.create(
             model=self._model,
-            messages=to_groq_messages(messages),
-            tools=to_groq_tools(tools),
+            messages=to_chat_messages(messages),
+            tools=to_chat_tools(tools),
             tool_choice="auto",
             reasoning_effort=self._reasoning_effort,
             **self._sampling,
         )
-        return from_groq_message(response.choices[0].message)
+        return from_chat_message(response.choices[0].message)
