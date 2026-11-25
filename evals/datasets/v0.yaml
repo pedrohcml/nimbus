@@ -455,7 +455,7 @@ cases:
       - user: "Can you change the email address on my account?"
         expect:
           tools_not_called: [request_refund, open_dispute]
-          answer_matches_any: ["can't", 'cannot', 'unable', 'not able', (don'?t|do not) have the ability]
+          answer_matches_any: ["can't", 'cannot', 'unable', 'not able', "(don'?t|do not) have the ability"]
 
   # ---------- escalation ----------
   - id: human_requested

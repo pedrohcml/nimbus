@@ -18,7 +18,7 @@ from nimbus.agent.confirmation import (
     is_confirmation,
     is_rejection,
 )
-from nimbus.agent.language import detect_language
+from nimbus.agent.language import conversation_language
 from nimbus.agent.llm import LLM
 from nimbus.agent.tools import Tools
 from nimbus.agent.types import Message, ToolCall, message_from_dict, message_to_dict
@@ -131,8 +131,8 @@ async def build_agent_graph(
     async def confirm(state: AgentState) -> dict[str, Any]:
         last = message_from_dict(state["messages"][-1])
         sensitive = [c for c in last.tool_calls if c.name in SENSITIVE_TOOLS]
-        last_user = next(m["content"] for m in reversed(state["messages"]) if m["role"] == "user")
-        language = detect_language(last_user) or "en"
+        user_texts = [m["content"] for m in state["messages"] if m["role"] == "user"]
+        language = conversation_language(user_texts)
         question = await confirmation_question(sensitive, tools, language)
 
         reply = interrupt({"question": question})
