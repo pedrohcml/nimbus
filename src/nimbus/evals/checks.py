@@ -71,8 +71,9 @@ def check_turn(
     for tool in expect.tools_called:
         results.append(CheckResult(f"tools_called:{tool}", tool in called, f"called: {called}"))
     requested = _requested(trace)
+    executed = {call["name"] for call in calls if not call.get("is_error")}
     for tool in expect.tools_not_called:
-        touched = sorted(requested | set(called))
+        touched = sorted(requested | executed)
         results.append(
             CheckResult(f"tools_not_called:{tool}", tool not in touched, f"called: {touched}")
         )

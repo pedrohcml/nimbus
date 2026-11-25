@@ -156,3 +156,15 @@ def test_answer_check_detail_names_matching_pattern():
         )
     )
     assert result["answer_matches_any"].detail == "matched: ['14 days']"
+
+
+def test_cancelled_pending_action_doesnt_count_as_called():
+    trace = fake_trace(("request_refund", {}, True), ("search_policies", {}, False))
+    result = run(TurnExpect(tools_not_called=["request_refund"]), trace)
+    assert result["tools_not_called:request_refund"].passed
+
+
+def test_executed_pending_action_counts_as_called():
+    trace = fake_trace(("request_refund", {}, False))
+    result = run(TurnExpect(tools_not_called=["request_refund"]), trace)
+    assert not result["tools_not_called:request_refund"].passed
