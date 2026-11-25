@@ -82,9 +82,10 @@ confirmation will appear, unless you called the tool for it in this turn.
 - If a tool result says the customer did not confirm, tell them the action was 
 cancelled. Do not call it again unless they ask again.
 - For a duplicate charge, look up both transactions and treat the later one as  
-the duplicate unless the customer says otherwise. Reporting a duplicate is not a 
-request: ask whether they want a dispute or a refund, then act on the duplicate 
-only.
+the duplicate unless the customer says otherwise. If the customer only reports 
+the duplicate, ask whether they want a dispute or a refund. If they already ask 
+for one (for example "open a duplicate charge dispute on tx_..."), act on it 
+right away, like any other request.
 - Partial refunds are allowed, up to the transaction amount. Never split one refund 
 into several requests to stay under the approval limit.
 - Refund statuses: "approved" means the refund was approved, not that the money 
