@@ -1,0 +1,105 @@
+{"text": "where is my withdrawal? it's been hours", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "Can you check tx_4f1a9c02 for me?", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "my deposit hasn't shown up yet", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "What's the status of my last card payment?", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "Is my bitcoin transfer still confirming?", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "cadê meu saque?", "intent": "transaction_status", "language": "pt", "source": "handwritten"}
+{"text": "meu depósito via pix ainda não caiu", "intent": "transaction_status", "language": "pt", "source": "handwritten"}
+{"text": "pode ver como está a transação tx_9d03be71?", "intent": "transaction_status", "language": "pt", "source": "handwritten"}
+{"text": "o envio de bitcoin que fiz ontem já foi concluído?", "intent": "transaction_status", "language": "pt", "source": "handwritten"}
+{"text": "por que minha transação está pendente até agora?", "intent": "transaction_status", "language": "pt", "source": "handwritten"}
+{"text": "There's a charge on my card I didn't make", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "I don't recognize this transaction: tx_2c7e1d88", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "I was charged twice for the same purchase", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "What's happening with the dispute I opened last week?", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "Someone used my card at a store I've never been to", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "tem uma compra no meu cartão que eu não fiz", "intent": "dispute", "language": "pt", "source": "handwritten"}
+{"text": "não reconheço essa cobrança de R$ 230", "intent": "dispute", "language": "pt", "source": "handwritten"}
+{"text": "fui cobrado duas vezes pela mesma compra", "intent": "dispute", "language": "pt", "source": "handwritten"}
+{"text": "como está a contestação que abri?", "intent": "dispute", "language": "pt", "source": "handwritten"}
+{"text": "quero contestar a transação tx_5b8a0f14, não fui eu", "intent": "dispute", "language": "pt", "source": "handwritten"}
+{"text": "I bought something with my card and changed my mind, can I get a refund?", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "Please refund tx_7e3d2a90", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "I paid the card fee by mistake, I want it back", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "Has my refund been approved yet?", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "The shop cancelled my order, how do I get the money back?", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "quero o reembolso da compra que fiz ontem", "intent": "refund", "language": "pt", "source": "handwritten"}
+{"text": "pode estornar a taxa do cartão? paguei sem querer", "intent": "refund", "language": "pt", "source": "handwritten"}
+{"text": "meu reembolso já foi aprovado?", "intent": "refund", "language": "pt", "source": "handwritten"}
+{"text": "desisti da compra, quero meu dinheiro de volta", "intent": "refund", "language": "pt", "source": "handwritten"}
+{"text": "a transação tx_3a6c9e27 está atrasada e quero o dinheiro de volta", "intent": "refund", "language": "pt", "source": "handwritten"}
+{"text": "How much does it cost to withdraw bitcoin?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "What's the daily withdrawal limit?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "Can I deposit from someone else's bank account?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "How long does a dispute usually take?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "Do I pay anything to get the Nimbus card?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "qual a taxa pra sacar em reais?", "intent": "policy_question", "language": "pt", "source": "handwritten"}
+{"text": "quanto tempo leva um saque de bitcoin?", "intent": "policy_question", "language": "pt", "source": "handwritten"}
+{"text": "qual o valor mínimo pra comprar bitcoin?", "intent": "policy_question", "language": "pt", "source": "handwritten"}
+{"text": "posso abrir mais de uma disputa pra mesma transação?", "intent": "policy_question", "language": "pt", "source": "handwritten"}
+{"text": "como faço pra encerrar minha conta?", "intent": "policy_question", "language": "pt", "source": "handwritten"}
+{"text": "I want to talk to a real person", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "Can I speak with an agent please", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "this bot isn't helping, get me a human", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "Transfer me to the support team", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "Is there someone I can talk to about my case?", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "quero falar com um atendente", "intent": "human", "language": "pt", "source": "handwritten"}
+{"text": "me passa pra um humano", "intent": "human", "language": "pt", "source": "handwritten"}
+{"text": "tem alguém de verdade aí?", "intent": "human", "language": "pt", "source": "handwritten"}
+{"text": "não quero falar com robô", "intent": "human", "language": "pt", "source": "handwritten"}
+{"text": "preciso falar com uma pessoa sobre meu caso", "intent": "human", "language": "pt", "source": "handwritten"}
+{"text": "hi", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "Good morning!", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "thanks, that's all", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "ok great, thank you", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "hey there", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "oi", "intent": "smalltalk", "language": "pt", "source": "handwritten"}
+{"text": "boa tarde", "intent": "smalltalk", "language": "pt", "source": "handwritten"}
+{"text": "obrigado!", "intent": "smalltalk", "language": "pt", "source": "handwritten"}
+{"text": "valeu, era só isso", "intent": "smalltalk", "language": "pt", "source": "handwritten"}
+{"text": "olá, tudo bem?", "intent": "smalltalk", "language": "pt", "source": "handwritten"}
+{"text": "What's my bitcoin balance?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "Should I buy bitcoin now or wait?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "Has my identity verification been approved?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "What's the weather in São Paulo?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "Can you write me a poem about crypto?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "quanto eu tenho de saldo?", "intent": "out_of_scope", "language": "pt", "source": "handwritten"}
+{"text": "vale a pena investir em ethereum?", "intent": "out_of_scope", "language": "pt", "source": "handwritten"}
+{"text": "minha verificação de identidade foi aprovada?", "intent": "out_of_scope", "language": "pt", "source": "handwritten"}
+{"text": "qual a cotação do dólar hoje?", "intent": "out_of_scope", "language": "pt", "source": "handwritten"}
+{"text": "me ajuda com meu trabalho da faculdade?", "intent": "out_of_scope", "language": "pt", "source": "handwritten"}
+{"text": "can u tell me how the transaction tx_31312 is please", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "transaction tx_31312 how is it", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "When will the money pop up in my account", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "My cashapp deposit still didnt go through", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "will my money be available still today?", "intent": "transaction_status", "language": "en", "source": "handwritten"}
+{"text": "i dont recognize this shitty transaction that shows in my receipt give my money back now", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "I wasnt the one who paid R$ 600.00", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "What is the current situation of my dispute?", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "Someone sent all my money to a random account. Return it to me", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "Just got a notification of an unidentified transaction", "intent": "dispute", "language": "en", "source": "handwritten"}
+{"text": "gimme my money back fool, transaction tx_1212", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "I sent mistakenly R$ 200.00 when I just wanted to send R$ 100.00. Refund me the other R$ 100.00", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "How is my refund right now", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "I want a refund from a purchase I made last year", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "Approve my refund right now", "intent": "refund", "language": "en", "source": "handwritten"}
+{"text": "how much can i refund without needing any kind of approval", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "how can i terminate my account", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "which currencies do you guys work with?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "Do you guys charge any fees?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "how many wallets can i have?", "intent": "policy_question", "language": "en", "source": "handwritten"}
+{"text": "just transfer me bruh cant talk to no ai", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "send me to someone who can actually solve my issue", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "i want to be transferred", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "escalate the conversation", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "Send this to a live agent", "intent": "human", "language": "en", "source": "handwritten"}
+{"text": "whats up nimbus", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "How are you doing?", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "Howdy", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "Good morning nimbus how is the system today?", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "Sup nimbus", "intent": "smalltalk", "language": "en", "source": "handwritten"}
+{"text": "i want to make me some tacos tell me a good taco recipe", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "Who are the best 5 guitarists of all time?", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "tell me a random number", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "which car should i buy with the bitcoin i made nimbus", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
+{"text": "a friend of mine wants to work at nimbus exchange", "intent": "out_of_scope", "language": "en", "source": "handwritten"}
