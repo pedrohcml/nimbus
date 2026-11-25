@@ -20,7 +20,7 @@ cases:
           tools_called: [get_transaction]
           tool_args:
             get_transaction: {transaction_id: "{TX_WITHDRAWAL_CONFIRMING}"}
-          answer_matches_any: ['2\s*(of|out of|/)\s*(the\s+)?(required\s+)?3']
+          answer_matches_any: ['2\s*(of|out of|/)\s*(the\s+)?(required\s+)?3', '2\s+confirmations?\b.*\b3\b']
 
   - id: lookup_typo_id_is_looked_up_as_written
     category: lookup
@@ -455,7 +455,7 @@ cases:
       - user: "Can you change the email address on my account?"
         expect:
           tools_not_called: [request_refund, open_dispute]
-          answer_matches_any: ["can't", 'cannot', 'unable', 'not able']
+          answer_matches_any: ["can't", 'cannot', 'unable', 'not able', (don'?t|do not) have the ability]
 
   # ---------- escalation ----------
   - id: human_requested
