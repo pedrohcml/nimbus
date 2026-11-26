@@ -11,6 +11,14 @@ def reasoning_effort() -> str:
     return os.environ.get("NIMBUS_REASONING_EFFORT") or "medium"
 
 
+def router_model() -> str:
+    return os.environ.get("NIMBUS_ROUTER_MODEL") or DEFAULT_AGENT_MODEL
+
+
+def router_reasoning_effort() -> str:
+    return os.environ.get("NIMBUS_ROUTER_REASONING_EFFORT") or "none"
+
+
 def ollama_base_url() -> str:
     return os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
 

@@ -1,11 +1,25 @@
 import pytest
 
-from nimbus.agent.settings import agent_model, ollama_base_url, reasoning_effort, sampling_options
+from nimbus.agent.settings import (
+    agent_model,
+    ollama_base_url,
+    reasoning_effort,
+    router_model,
+    router_reasoning_effort,
+    sampling_options,
+)
 
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    for name in ("NIMBUS_AGENT_MODEL", "NIMBUS_REASONING_EFFORT", "NIMBUS_SEED", "OLLAMA_BASE_URL"):
+    for name in (
+        "NIMBUS_AGENT_MODEL",
+        "NIMBUS_REASONING_EFFORT",
+        "NIMBUS_ROUTER_MODEL",
+        "NIMBUS_ROUTER_REASONING_EFFORT",
+        "NIMBUS_SEED",
+        "OLLAMA_BASE_URL",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -38,3 +52,15 @@ def test_seed_is_integer(monkeypatch):
     seed = sampling_options()["seed"]
     assert seed == 7
     assert isinstance(seed, int)
+
+
+def test_router_defaults_to_local_gamma_without_reasoning():
+    assert router_model() == "gemma4:12b"
+    assert router_reasoning_effort() == "none"
+
+
+def test_router_settings_can_be_changed(monkeypatch):
+    monkeypatch.setenv("NIMBUS_ROUTER_MODEL", "gemma4:26b")
+    monkeypatch.setenv("NIMBUS_ROUTER_REASONING_EFFORT", "medium")
+    assert router_model() == "gemma4:26b"
+    assert router_reasoning_effort() == "medium"
